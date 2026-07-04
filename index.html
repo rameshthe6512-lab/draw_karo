@@ -1,0 +1,2571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>DrawKaro — draw, guess, laugh</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#22254a;        /* deep indigo night */
+  --ink-2:#2c3060;      /* panel indigo */
+  --ink-3:#383d78;      /* raised indigo */
+  --paper:#fff9ef;      /* drawing paper */
+  --coral:#ff6b6b;      /* crayon coral */
+  --sun:#ffd166;        /* marker yellow */
+  --teal:#35ccb0;       /* sketch teal */
+  --grape:#9b8cff;      /* grape purple */
+  --sky:#4ea8de;        /* sky blue */
+  --text:#f4f2ff;
+  --muted:#a9abd6;
+  --ok:#3ddc97;
+  --bad:#ff5d73;
+  --r-lg:22px; --r-md:14px; --r-sm:10px;
+  --shadow:0 8px 0 rgba(0,0,0,.22);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  font-family:'Nunito',sans-serif;color:var(--text);
+  background:
+    radial-gradient(1200px 700px at 80% -10%, rgba(155,140,255,.18), transparent 60%),
+    radial-gradient(900px 600px at -10% 110%, rgba(53,204,176,.14), transparent 60%),
+    var(--ink);
+  overflow:hidden;
+}
+button{font-family:inherit;border:none;cursor:pointer;color:inherit;background:none}
+input{font-family:inherit}
+h1,h2,h3,.display{font-family:'Fredoka',sans-serif}
+
+/* ---------- doodle background ---------- */
+.bg-doodles{position:fixed;inset:0;pointer-events:none;opacity:.07;z-index:0}
+.bg-doodles span{position:absolute;font-size:42px;animation:floaty 9s ease-in-out infinite}
+@keyframes floaty{0%,100%{transform:translateY(0) rotate(-8deg)}50%{transform:translateY(-18px) rotate(8deg)}}
+
+/* ---------- screens ---------- */
+.screen{position:fixed;inset:0;display:none;z-index:1}
+.screen:not(.active){display:none !important}
+.screen.active{display:flex !important;flex-direction:column}
+
+/* ================= LOBBY ================= */
+#lobby{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:18px;overflow-y:auto}
+.lobby-card{
+  width:min(520px,100%);background:var(--ink-2);border-radius:var(--r-lg);
+  padding:26px 26px 30px;box-shadow:var(--shadow);border:3px solid rgba(255,255,255,.07);
+  margin:12px auto;
+  flex-shrink:0;
+}
+.logo{font-size:clamp(38px,7vw,54px);font-weight:700;text-align:center;letter-spacing:.5px;line-height:1}
+.logo .l{display:inline-block;animation:bounceIn .8s both}
+.logo .l:nth-child(1){color:var(--coral)} .logo .l:nth-child(2){color:var(--sun)}
+.logo .l:nth-child(3){color:var(--teal)} .logo .l:nth-child(4){color:var(--sky)}
+.logo .l:nth-child(5){color:var(--grape)} .logo .l:nth-child(6){color:var(--coral)}
+.logo .word2{color:var(--sun)}
+@keyframes bounceIn{0%{transform:translateY(-40px);opacity:0}60%{transform:translateY(6px);opacity:1}100%{transform:translateY(0)}}
+.tagline{text-align:center;color:var(--muted);margin:6px 0 20px;font-weight:600}
+
+.avatar-stage{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:18px}
+.avatar-big{
+  width:96px;height:96px;border-radius:32px;display:grid;place-items:center;font-size:52px;
+  box-shadow:var(--shadow);border:3px solid rgba(255,255,255,.25);transition:background .25s;
+}
+.spin-btn{width:44px;height:44px;border-radius:14px;background:var(--ink-3);font-size:20px;box-shadow:0 4px 0 rgba(0,0,0,.25);transition:transform .1s}
+.spin-btn:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.25)}
+
+.field{margin-bottom:14px}
+.field label{display:block;font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.field input[type=text]{
+  width:100%;padding:13px 16px;border-radius:var(--r-md);border:3px solid rgba(255,255,255,.1);
+  background:var(--ink);color:var(--text);font-size:17px;font-weight:700;outline:none;
+}
+.field input[type=text]:focus{border-color:var(--sun)}
+.settings-row{display:flex;gap:10px}
+.settings-row .field{flex:1}
+.seg{display:flex;background:var(--ink);border-radius:var(--r-md);padding:4px;gap:4px}
+.seg button{flex:1;padding:9px 4px;border-radius:10px;font-weight:800;color:var(--muted);font-size:15px}
+.seg button.on{background:var(--grape);color:#fff;box-shadow:0 3px 0 rgba(0,0,0,.25)}
+
+.play-btn{
+  width:100%;margin-top:8px;padding:16px;border-radius:var(--r-md);font-family:'Fredoka';font-size:24px;font-weight:600;
+  background:linear-gradient(180deg,var(--teal),#22b298);color:#08322a;box-shadow:0 7px 0 #14806c;transition:transform .08s, box-shadow .08s;
+}
+.play-btn:active{transform:translateY(5px);box-shadow:0 2px 0 #14806c}
+.mp-note{margin-top:16px;font-size:13px;color:var(--muted);background:var(--ink);border-radius:var(--r-md);padding:12px 14px;line-height:1.5;border-left:4px solid var(--sky)}
+
+/* ================= GAME ================= */
+#game{flex-direction:column;padding:10px;gap:10px}
+.topbar{
+  display:flex;align-items:center;gap:12px;background:var(--ink-2);border-radius:var(--r-md);
+  padding:8px 14px;box-shadow:var(--shadow);flex:none;min-height:64px;
+}
+.timer-wrap{position:relative;width:52px;height:52px;flex:none}
+.timer-wrap svg{width:100%;height:100%;display:block;transform:rotate(-90deg)}
+.timer-ring{fill:none;stroke:var(--teal);stroke-width:6;stroke-linecap:round;transition:stroke-dashoffset 1s linear, stroke .3s}
+.timer-bg{fill:none;stroke:rgba(255,255,255,.12);stroke-width:6}
+.timer-num{position:absolute;inset:0;display:grid;place-items:center;font-family:'Fredoka';font-size:19px;font-weight:600}
+.round-label{font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap}
+.round-num{font-family:'Fredoka';font-size:18px;font-weight:600;white-space:nowrap}
+
+.hint-zone{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0}
+.hint-topic{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.hint-tiles{display:flex;gap:5px;flex-wrap:wrap;justify-content:center}
+.tile{
+  min-width:24px;height:32px;padding:0 4px;border-radius:7px;display:grid;place-items:center;
+  font-family:'Fredoka';font-size:19px;font-weight:600;color:#3a2c00;
+  background:var(--sun);box-shadow:0 3px 0 #c99b1e;transition:transform .3s;
+}
+.tile.blank{background:var(--ink-3);box-shadow:0 3px 0 rgba(0,0,0,.3);color:transparent}
+.tile.space{background:transparent;box-shadow:none;min-width:10px}
+.tile.pop{animation:tilePop .45s}
+@keyframes tilePop{0%{transform:rotateX(90deg) scale(.6)}70%{transform:rotateX(-15deg) scale(1.15)}100%{transform:rotateX(0)}}
+.icon-btn{
+  width:44px;height:44px;border-radius:12px;background:var(--ink-3);font-size:20px;flex:none;
+  box-shadow:0 4px 0 rgba(0,0,0,.25);transition:transform .08s;display:grid;place-items:center;
+}
+.icon-btn:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.25)}
+.icon-btn.mic-on{background:var(--ok);color:#0a3626}
+.icon-btn.mic-live{animation:micPulse 1.2s infinite}
+@keyframes micPulse{0%,100%{box-shadow:0 4px 0 rgba(0,0,0,.25),0 0 0 0 rgba(61,220,151,.6)}50%{box-shadow:0 4px 0 rgba(0,0,0,.25),0 0 0 10px rgba(61,220,151,0)}}
+
+.game-body{flex:1;display:grid;grid-template-columns:160px 1fr 240px;gap:10px;min-height:0}
+
+/* players panel */
+.panel{background:var(--ink-2);border-radius:var(--r-md);box-shadow:var(--shadow);display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.panel-head{padding:10px 14px;font-family:'Fredoka';font-weight:600;font-size:15px;border-bottom:2px solid rgba(255,255,255,.07);display:flex;justify-content:space-between;align-items:center;flex:none}
+.players-list{flex:1;overflow-y:auto;padding:8px}
+.player{
+  display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:12px;margin-bottom:6px;
+  background:rgba(255,255,255,.04);transition:background .3s;position:relative;
+}
+.player.guessed{background:rgba(61,220,151,.16);outline:2px solid rgba(61,220,151,.4)}
+.player.drawing-now{background:rgba(255,209,102,.14);outline:2px solid rgba(255,209,102,.45)}
+.p-avatar{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;font-size:22px;flex:none;position:relative;border:2px solid rgba(255,255,255,.2)}
+.p-avatar.speaking::after{content:'';position:absolute;inset:-5px;border-radius:16px;border:3px solid var(--ok);animation:speakRing .9s infinite}
+@keyframes speakRing{0%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.25)}}
+.p-info{flex:1;min-width:0}
+.p-name{font-weight:800;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.p-name .you{color:var(--sun);font-size:11px}
+.p-score{font-size:12px;color:var(--muted);font-weight:700}
+.p-badge{font-size:17px;flex:none}
+.p-rankup{position:absolute;right:8px;top:-8px;font-size:12px;font-weight:800;color:var(--ok);animation:rankFloat 1.4s forwards;pointer-events:none}
+@keyframes rankFloat{0%{opacity:0;transform:translateY(6px)}25%{opacity:1}100%{opacity:0;transform:translateY(-16px)}}
+
+/* voice panel */
+.voice-box{flex:none;border-top:2px solid rgba(255,255,255,.07);padding:10px 12px}
+.voice-title{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.voice-title .dot{width:8px;height:8px;border-radius:50%;background:var(--bad)}
+.voice-title .dot.live{background:var(--ok);animation:micPulse 1.2s infinite}
+.vu{display:flex;gap:3px;align-items:flex-end;height:26px}
+.vu i{flex:1;background:var(--ink-3);border-radius:3px;height:20%;transition:height .08s, background .08s}
+.vu i.hot{background:var(--teal)}
+.voice-hint{font-size:11px;color:var(--muted);margin-top:7px;line-height:1.45}
+
+/* canvas center */
+.canvas-col{display:flex;flex-direction:column;gap:10px;min-height:0;min-width:0}
+.canvas-shell{
+  flex:1;background:var(--paper);border-radius:var(--r-md);box-shadow:var(--shadow);
+  position:relative;overflow:hidden;min-height:0;border:3px solid rgba(0,0,0,.15);
+}
+#board{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:crosshair}
+.canvas-banner{
+  position:absolute;top:10px;left:50%;transform:translateX(-50%);
+  background:var(--ink);color:var(--text);padding:7px 16px;border-radius:999px;
+  font-weight:800;font-size:14px;box-shadow:0 4px 0 rgba(0,0,0,.3);opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;max-width:92%;overflow:hidden;text-overflow:ellipsis;
+}
+.canvas-banner.show{opacity:.94}
+.reaction-bar{
+  position:absolute;bottom:10px;right:10px;display:flex;gap:6px;background:rgba(34,37,74,.85);
+  padding:6px;border-radius:999px;backdrop-filter:blur(4px);
+}
+.reaction-bar button{font-size:20px;width:38px;height:38px;border-radius:50%;transition:transform .12s}
+.reaction-bar button:hover{transform:scale(1.25) rotate(-8deg)}
+
+/* toolbar */
+.tools{
+  flex:none;background:var(--ink-2);border-radius:var(--r-md);box-shadow:var(--shadow);
+  padding:9px 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+}
+.tools.disabled{opacity:.35;pointer-events:none}
+.swatches{display:flex;gap:5px;flex-wrap:wrap;flex:1;min-width:180px}
+.swatch{width:27px;height:27px;border-radius:9px;border:3px solid transparent;transition:transform .1s;box-shadow:0 2px 0 rgba(0,0,0,.3)}
+.swatch.on{border-color:#fff;transform:scale(1.18)}
+.brushes{display:flex;gap:5px;align-items:center}
+.brush{width:36px;height:36px;border-radius:10px;background:var(--ink-3);display:grid;place-items:center}
+.brush.on{background:var(--grape)}
+.brush i{background:#fff;border-radius:50%;display:block}
+.tool-btn{width:38px;height:38px;border-radius:10px;background:var(--ink-3);font-size:17px;box-shadow:0 3px 0 rgba(0,0,0,.25);display:grid;place-items:center}
+.tool-btn.on{background:var(--coral);box-shadow:0 3px 0 #b23c3c}
+.tool-btn:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.25)}
+
+/* chat */
+.chat-list{flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:6px}
+.msg{font-size:14px;line-height:1.35;padding:7px 11px;border-radius:12px;background:rgba(255,255,255,.05);animation:msgIn .25s;word-break:break-word}
+@keyframes msgIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.msg b{color:var(--sky)}
+.msg.sys{background:transparent;color:var(--muted);font-weight:700;font-size:13px;text-align:center}
+.msg.correct{background:rgba(61,220,151,.18);color:var(--ok);font-weight:800;border:2px solid rgba(61,220,151,.35)}
+.msg.close{background:rgba(255,209,102,.14);color:var(--sun);font-weight:700}
+.msg.wrong-me{animation:msgIn .25s, shake .4s}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+.chat-input-row{flex:none;display:flex;gap:8px;padding:10px;border-top:2px solid rgba(255,255,255,.07)}
+.chat-input-row input{
+  flex:1;padding:11px 14px;border-radius:12px;border:3px solid rgba(255,255,255,.1);min-width:0;
+  background:var(--ink);color:var(--text);font-weight:700;font-size:15px;outline:none;
+}
+.chat-input-row input:focus{border-color:var(--teal)}
+.send-btn{width:46px;border-radius:12px;background:var(--teal);font-size:19px;color:#08322a;box-shadow:0 4px 0 #14806c;flex:none}
+.send-btn:active{transform:translateY(3px);box-shadow:0 1px 0 #14806c}
+
+/* ---------- overlays ---------- */
+.overlay{
+  position:fixed;inset:0;background:rgba(15,16,36,.78);backdrop-filter:blur(5px);
+  display:none;align-items:center;justify-content:center;z-index:50;padding:18px;
+}
+.overlay.show{display:flex}
+.ov-card{background:var(--ink-2);border-radius:var(--r-lg);padding:28px;text-align:center;box-shadow:var(--shadow);border:3px solid rgba(255,255,255,.08);max-width:520px;width:100%;animation:cardIn .4s cubic-bezier(.2,1.4,.4,1)}
+@keyframes cardIn{from{transform:scale(.7);opacity:0}to{transform:scale(1);opacity:1}}
+.ov-title{font-family:'Fredoka';font-size:26px;font-weight:600;margin-bottom:6px}
+.ov-sub{color:var(--muted);font-weight:700;margin-bottom:20px}
+.word-choices{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.word-choice{
+  padding:14px 22px;border-radius:var(--r-md);font-family:'Fredoka';font-size:20px;font-weight:600;flex:1;min-width:120px;
+  background:var(--ink-3);box-shadow:0 5px 0 rgba(0,0,0,.3);transition:transform .1s;
+}
+.word-choice:nth-child(1):hover{background:var(--coral)} .word-choice:nth-child(2):hover{background:var(--teal);color:#08322a} .word-choice:nth-child(3):hover{background:var(--grape)}
+.word-choice:active{transform:translateY(4px);box-shadow:0 1px 0 rgba(0,0,0,.3)}
+.reveal-word{font-family:'Fredoka';font-size:34px;font-weight:700;color:var(--sun);margin:8px 0 16px}
+.score-rows{display:flex;flex-direction:column;gap:8px;text-align:left}
+.score-row{display:flex;align-items:center;gap:10px;background:var(--ink);padding:9px 13px;border-radius:12px;font-weight:800}
+.score-row .delta{margin-left:auto;color:var(--ok);font-family:'Fredoka'}
+.score-row .delta.zero{color:var(--muted)}
+.podium{display:flex;align-items:flex-end;justify-content:center;gap:12px;margin:18px 0 8px}
+.pod{display:flex;flex-direction:column;align-items:center;gap:8px}
+.pod .p-avatar{width:56px;height:56px;font-size:30px;border-radius:18px}
+.pod .bar{width:76px;border-radius:12px 12px 0 0;display:grid;place-items:center;font-family:'Fredoka';font-size:26px;font-weight:700;color:rgba(0,0,0,.55);animation:podUp .8s cubic-bezier(.2,1.3,.4,1) both}
+@keyframes podUp{from{height:0px}}
+.pod .nm{font-weight:800;font-size:13px;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.big-btn{margin-top:18px;padding:14px 34px;border-radius:var(--r-md);font-family:'Fredoka';font-size:20px;font-weight:600;background:var(--sun);color:#3a2c00;box-shadow:0 6px 0 #c99b1e}
+.big-btn:active{transform:translateY(4px);box-shadow:0 2px 0 #c99b1e}
+
+/* turn announce */
+.announce{
+  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);z-index:60;pointer-events:none;
+  background:var(--ink-2);padding:20px 34px;border-radius:var(--r-lg);box-shadow:var(--shadow);
+  font-family:'Fredoka';font-size:24px;font-weight:600;text-align:center;border:3px solid rgba(255,255,255,.12);
+}
+.announce.show{animation:annPop 2.2s forwards}
+@keyframes annPop{0%{transform:translate(-50%,-50%) scale(0)}12%{transform:translate(-50%,-50%) scale(1.05)}18%{transform:translate(-50%,-50%) scale(1)}82%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(.9)}}
+
+/* emoji fx layer */
+#fx{position:fixed;inset:0;pointer-events:none;z-index:80;overflow:hidden}
+.fly{position:absolute;font-size:30px;animation:flyUp 1.6s ease-out forwards;will-change:transform,opacity}
+@keyframes flyUp{
+  0%{transform:translateY(0) scale(.5) rotate(0);opacity:0}
+  12%{opacity:1;transform:translateY(-20px) scale(1.15) rotate(var(--rot))}
+  100%{transform:translateY(-46vh) scale(1) rotate(var(--rot));opacity:0}
+}
+.confetti{position:absolute;width:10px;height:14px;top:-20px;animation:confFall linear forwards;will-change:transform}
+@keyframes confFall{to{transform:translateY(110vh) rotate(720deg)}}
+
+/* toast */
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink-3);padding:10px 18px;border-radius:999px;font-weight:800;font-size:14px;box-shadow:var(--shadow);opacity:0;transition:opacity .3s;z-index:90;pointer-events:none;max-width:92%;text-align:center}
+#toast.show{opacity:1}
+
+/* ---------- scrollbars ---------- */
+::-webkit-scrollbar{width:8px}
+::-webkit-scrollbar-thumb{background:var(--ink-3);border-radius:8px}
+
+/* ================= ROOM SCREEN ================= */
+#room{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:18px;overflow-y:auto}
+.room-card{width:min(720px,100%);background:var(--ink-2);border-radius:var(--r-lg);padding:24px;box-shadow:var(--shadow);border:3px solid rgba(255,255,255,.07);margin:12px auto;flex-shrink:0}
+.room-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.room-title{font-family:'Fredoka';font-size:24px;font-weight:600}
+.room-code-chip{font-family:'Fredoka';font-size:19px;font-weight:600;letter-spacing:.2em;background:var(--ink);padding:8px 14px;border-radius:12px;color:var(--sun);border:2px dashed rgba(255,209,102,.5)}
+.invite-row{display:flex;gap:8px;margin-bottom:16px}
+.invite-row input{flex:1;min-width:0;padding:11px 13px;border-radius:12px;border:3px solid rgba(255,255,255,.1);background:var(--ink);color:var(--muted);font-weight:700;font-size:13px;outline:none}
+.copy-btn{padding:0 16px;border-radius:12px;background:var(--sky);color:#082338;font-weight:800;box-shadow:0 4px 0 #2d6f99;white-space:nowrap}
+.copy-btn:active{transform:translateY(3px);box-shadow:0 1px 0 #2d6f99}
+.settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px}
+.sel{width:100%;padding:11px 12px;border-radius:12px;border:3px solid rgba(255,255,255,.1);background:var(--ink);color:var(--text);font-weight:800;font-size:15px;outline:none;font-family:'Nunito';appearance:none;cursor:pointer}
+.sel:focus{border-color:var(--grape)}
+#customWords{width:100%;min-height:66px;resize:vertical;padding:11px 13px;border-radius:12px;border:3px solid rgba(255,255,255,.1);background:var(--ink);color:var(--text);font-weight:700;font-size:14px;outline:none;font-family:'Nunito'}
+#customWords:focus{border-color:var(--teal)}
+.check-row{display:flex;align-items:center;gap:9px;margin:10px 0 16px;font-weight:800;font-size:14px;color:var(--muted);cursor:pointer;user-select:none}
+.check-box{width:24px;height:24px;border-radius:8px;background:var(--ink);border:3px solid rgba(255,255,255,.15);display:grid;place-items:center;font-size:14px;color:transparent;transition:all .15s;flex:none}
+.check-row.on .check-box{background:var(--teal);color:#08322a;border-color:var(--teal)}
+.check-row.on{color:var(--text)}
+.room-players{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;min-height:64px}
+.slot{display:flex;align-items:center;gap:8px;background:var(--ink);border-radius:12px;padding:7px 10px;animation:msgIn .3s;position:relative}
+.slot .p-avatar{width:34px;height:34px;font-size:18px;border-radius:11px}
+.slot .s-name{font-weight:800;font-size:13px}
+.slot .s-tag{font-size:10px;color:var(--muted);font-weight:800}
+.kick{width:22px;height:22px;border-radius:50%;background:var(--bad);color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;box-shadow:0 2px 0 #a33;flex:none}
+.kick-vote{width:22px;height:22px;border-radius:50%;background:var(--grape);color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;box-shadow:0 2px 0 #5b4bc0;flex:none;border:none;cursor:pointer}
+.kick-vote:active{transform:translateY(1px);box-shadow:0 1px 0 #5b4bc0}
+.p-kick-btn{background:transparent;border:none;cursor:pointer;padding:0 2px;font-size:9px;color:var(--muted);opacity:0.5;transition:opacity 0.2s,transform 0.1s;display:flex;align-items:center;justify-content:center}
+.p-kick-btn:hover{opacity:1;transform:scale(1.2)}
+.slot.empty{opacity:.4;font-weight:800;font-size:13px;color:var(--muted);border:2px dashed rgba(255,255,255,.15);background:transparent;padding:12px 14px}
+.room-actions{display:flex;gap:10px}
+.room-actions .play-btn{margin-top:0;flex:2}
+.btn-ghost{flex:1;padding:14px;border-radius:var(--r-md);font-family:'Fredoka';font-size:18px;font-weight:600;background:var(--ink-3);box-shadow:0 6px 0 rgba(0,0,0,.3)}
+.btn-ghost:active{transform:translateY(4px);box-shadow:0 2px 0 rgba(0,0,0,.3)}
+/* lobby extra buttons */
+.lobby-actions{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+.btn-private{width:100%;padding:15px;border-radius:var(--r-md);font-family:'Fredoka';font-size:20px;font-weight:600;background:linear-gradient(180deg,var(--grape),#7d6ce0);color:#fff;box-shadow:0 7px 0 #5b4bc0}
+.btn-private:active{transform:translateY(5px);box-shadow:0 2px 0 #5b4bc0}
+.join-row{display:flex;gap:8px}
+.join-row input{flex:1;min-width:0;padding:13px 16px;border-radius:var(--r-md);border:3px solid rgba(255,255,255,.1);background:var(--ink);color:var(--text);font-size:16px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;outline:none}
+.join-row input:focus{border-color:var(--sky)}
+.join-btn{padding:0 20px;border-radius:var(--r-md);background:var(--sky);color:#082338;font-family:'Fredoka';font-size:17px;font-weight:600;box-shadow:0 5px 0 #2d6f99}
+.join-btn:active{transform:translateY(3px);box-shadow:0 1px 0 #2d6f99}
+
+/* ================= MOBILE ================= */
+@media (max-width:860px){
+  #game{padding:6px;gap:6px;height:100%}
+  .game-body{
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* side-by-side layout for players and chat */
+    grid-template-rows: 1fr 140px auto; /* Canvas/Tools gets 1fr, lists get 140px, input gets auto */
+    gap: 6px;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .canvas-col {
+    grid-column: 1 / span 2;
+    grid-row: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-height: 0;
+  }
+  /* players panel on bottom-left */
+  .panel.players-panel{
+    grid-column: 1;
+    grid-row: 2;
+    display: flex;
+    flex-direction: column;
+    background: var(--ink-2);
+    border-radius: var(--r-md);
+    border: 2px solid rgba(255, 255, 255, 0.07);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    height: 100%;
+  }
+  .panel.players-panel .panel-head{display:none}
+  .players-list{
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 3px;
+    overflow-y: auto;
+  }
+  .player{
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 4px;
+    margin-bottom: 0;
+    width: 100%;
+    min-height: 24px;
+    background: var(--ink);
+    border-radius: 5px;
+  }
+  .p-avatar{width:18px;height:18px;font-size:10px;border-radius:4px;border-width:1px}
+  .p-info{text-align:left; flex: 1; min-width: 0;}
+  .p-name{font-size:9px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; line-height: 1.1;}
+  .p-score{font-size:8px; line-height: 1.1;}
+  .p-badge{font-size:9px}
+  .voice-box{display:none}
+  
+  /* chat panel using display contents to position items in parent grid */
+  .panel.chat-panel {
+    display: contents;
+  }
+  .panel.chat-panel .panel-head { display: none; }
+  
+  /* chat list on bottom-right */
+  .chat-list {
+    grid-column: 2;
+    grid-row: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 4px;
+    overflow-y: auto;
+    background: var(--ink-2);
+    border-radius: var(--r-md);
+    border: 2px solid rgba(255, 255, 255, 0.07);
+    box-shadow: var(--shadow);
+    height: 100%;
+  }
+  .msg {
+    font-size: 10.5px !important;
+    line-height: 1.25 !important;
+    padding: 4px 6px !important;
+    border-radius: 6px !important;
+  }
+  .msg.sys {
+    font-size: 9.5px !important;
+  }
+  
+  /* chat input row on very bottom, spanning full-width! */
+  .chat-input-row {
+    grid-column: 1 / span 2;
+    grid-row: 3;
+    display: flex;
+    gap: 6px;
+    padding: 6px;
+    background: var(--ink-2);
+    border-radius: var(--r-md);
+    border: 2px solid rgba(255, 255, 255, 0.07);
+    box-shadow: var(--shadow);
+  }
+  .chat-input-row input {
+    flex: 1;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 2px solid rgba(255,255,255,.1);
+    background: var(--ink);
+    color: var(--text);
+    font-size: 14px;
+    outline: none;
+  }
+  .chat-input-row input:focus{border-color:var(--teal)}
+  .send-btn {
+    width: 40px;
+    height: 38px;
+    border-radius: 8px;
+    font-size: 15px;
+    box-shadow: 0 3px 0 #14806c;
+    flex: none;
+  }
+  
+  .topbar{min-height:44px;padding:4px 8px;gap:6px}
+  .timer-wrap{width:32px;height:32px}
+  .timer-num{font-size:13px}
+  .timer-bg, .timer-ring{stroke-width:4}
+  .tile{min-width:14px;height:20px;font-size:12px;border-radius:4px;border-bottom-width:2px}
+  .round-label{display:none}
+  .tools{padding:4px 6px;gap:4px}
+  .swatches{min-width:100px;gap:3px}
+  .swatch{width:18px;height:18px;border-radius:4px}
+  .brushes{gap:3px}
+  .brushes .brush{width:24px;height:24px;border-radius:4px}
+  .tool-btn{width:24px;height:24px;border-radius:4px;font-size:12px}
+}
+@media (max-width:400px){
+  .brushes .brush:nth-child(3){display:none}
+}
+</style>
+</head>
+<body>
+
+<div class="bg-doodles" id="bgDoodles"></div>
+
+<!-- ================= LOBBY ================= -->
+<div class="screen active" id="lobby">
+  <div class="lobby-card">
+    <h1 class="logo">
+      <span class="l" style="animation-delay:0s">D</span><span class="l" style="animation-delay:.06s">r</span><span class="l" style="animation-delay:.12s">a</span><span class="l" style="animation-delay:.18s">w</span><span class="word2 l" style="animation-delay:.26s">Karo</span> <span style="font-size:.7em">🎨</span>
+    </h1>
+    <p class="tagline">Draw it. Guess it. Rub it in.</p>
+
+    <div class="avatar-stage">
+      <button class="spin-btn" id="avPrev">◀</button>
+      <div class="avatar-big" id="avatarBig">🦊</div>
+      <button class="spin-btn" id="avNext">▶</button>
+      <button class="spin-btn" id="avColor" title="change color">🎨</button>
+    </div>
+
+    <div class="field">
+      <label for="nameInput">Your name</label>
+      <input type="text" id="nameInput" maxlength="14" placeholder="e.g. SketchyPete" autocomplete="off">
+    </div>
+
+    <div class="field">
+      <label>Language</label>
+      <select class="sel" id="langSel">
+        <option value="en">🇬🇧 English</option>
+        <option value="es">🇪🇸 Español</option>
+        <option value="fr">🇫🇷 Français</option>
+        <option value="de">🇩🇪 Deutsch</option>
+        <option value="hi">🇮🇳 हिन्दी</option>
+        <option value="ta">🇮🇳 தமிழ்</option>
+      </select>
+    </div>
+
+    <div class="lobby-actions">
+      <button class="play-btn" id="playBtn">Quick Play! ✏️</button>
+      <button class="btn-private" id="createRoomBtn">🔒 Create private room</button>
+      <div class="join-row">
+        <input type="text" id="joinCode" maxlength="6" placeholder="ROOM CODE" autocomplete="off">
+        <button class="join-btn" id="joinBtn">Join</button>
+      </div>
+    </div>
+
+    <p class="mp-note">🎙️ <b>Voice & multiplayer:</b> Connected to server automatically! Private rooms support live voice chat with friends over WebRTC.</p>
+  </div>
+</div>
+
+<!-- ================= PRIVATE ROOM ================= -->
+<div class="screen" id="room">
+  <div class="room-card">
+    <div class="room-head">
+      <div class="room-title">🔒 Private room</div>
+      <div class="room-code-chip" id="roomCodeChip">------</div>
+    </div>
+    <div class="invite-row">
+      <input type="text" id="inviteLink" readonly>
+      <button class="copy-btn" id="copyLinkBtn">📋 Copy link</button>
+    </div>
+
+    <div class="settings-grid">
+      <div class="field"><label>Players</label>
+        <select class="sel" id="setPlayers"><option>3</option><option>4</option><option selected>5</option><option>6</option><option>7</option><option>8</option></select>
+      </div>
+      <div class="field"><label>Language</label>
+        <select class="sel" id="setLang">
+          <option value="en">🇬🇧 English</option><option value="es">🇪🇸 Español</option><option value="fr">🇫🇷 Français</option>
+          <option value="de">🇩🇪 Deutsch</option><option value="hi">🇮🇳 हिन्दी</option><option value="ta">🇮🇳 தமிழ்</option>
+        </select>
+      </div>
+      <div class="field"><label>Draw time</label>
+        <select class="sel" id="setTime"><option>30</option><option>45</option><option selected>60</option><option>80</option><option>100</option><option>120</option></select>
+      </div>
+      <div class="field"><label>Rounds</label>
+        <select class="sel" id="setRounds"><option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option></select>
+      </div>
+      <div class="field"><label>Word count</label>
+        <select class="sel" id="setWordCount"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option></select>
+      </div>
+      <div class="field"><label>Hints</label>
+        <select class="sel" id="setHints"><option>0</option><option>1</option><option selected>2</option><option>3</option></select>
+      </div>
+      <div class="field"><label>Word mode</label>
+        <select class="sel" id="setMode">
+          <option value="normal" selected>Normal</option>
+          <option value="hidden">Hidden 🙈</option>
+          <option value="combo">Combination ✚</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Custom words <span style="text-transform:none;letter-spacing:0">(comma separated, min 4 to use)</span></label>
+      <textarea id="customWords" placeholder="e.g. dosa, cricket, autorickshaw, filter coffee, kolam"></textarea>
+    </div>
+    <div class="check-row" id="customOnly"><span class="check-box">✔</span> Use custom words only</div>
+    <div class="check-row on" id="surpriseHijack"><span class="check-box">✔</span> Enable Surprise Word Hijack 🎁</div>
+
+    <div class="field"><label>In the room <span id="roomCount"></span></label></div>
+    <div class="room-players" id="roomPlayers"></div>
+
+    <div class="room-actions">
+      <button class="btn-ghost" id="leaveRoomBtn">← Leave</button>
+      <button class="play-btn" id="startRoomBtn">Start game! 🚀</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= GAME ================= -->
+<div class="screen" id="game">
+  <div class="topbar">
+    <div class="timer-wrap">
+      <svg width="52" height="52" viewBox="0 0 52 52">
+        <circle class="timer-bg" cx="26" cy="26" r="21"></circle>
+        <circle class="timer-ring" id="timerRing" cx="26" cy="26" r="21" stroke-dasharray="131.9" stroke-dashoffset="0"></circle>
+      </svg>
+      <div class="timer-num" id="timerNum">60</div>
+    </div>
+    <div>
+      <div class="round-label">Round</div>
+      <div class="round-num" id="roundNum">1 / 3</div>
+    </div>
+    <div class="hint-zone">
+      <div class="hint-topic" id="hintTopic">Guess this</div>
+      <div class="hint-tiles" id="hintTiles"></div>
+    </div>
+    <button class="icon-btn" id="micBtn" title="voice chat mic">🎙️</button>
+    <button class="icon-btn" id="soundBtn" title="sound effects">🔊</button>
+  </div>
+
+  <div class="game-body">
+    <!-- players -->
+    <div class="panel players-panel">
+      <div class="panel-head"><span>Players</span><span id="turnTag" style="font-size:12px;color:var(--muted)"></span></div>
+      <div class="players-list" id="playersList"></div>
+      <div class="voice-box">
+        <div class="voice-title"><span class="dot" id="voiceDot"></span> Voice chat</div>
+        <div class="vu" id="vu"></div>
+        <div class="voice-hint" id="voiceHint">Mic is off. Tap 🎙️ to talk — bars show your live voice.</div>
+      </div>
+    </div>
+
+    <!-- canvas -->
+    <div class="canvas-col">
+      <div class="canvas-shell">
+        <canvas id="board"></canvas>
+        <div class="canvas-banner" id="canvasBanner"></div>
+      </div>
+      <div class="tools" id="tools">
+        <div class="swatches" id="swatches"></div>
+        <div class="brushes" id="brushes"></div>
+        <button class="tool-btn" id="eraserBtn" title="eraser">🧽</button>
+        <button class="tool-btn" id="fillBtn" title="fill">🪣</button>
+        <button class="tool-btn" id="undoBtn" title="undo">↩️</button>
+        <button class="tool-btn" id="clearBtn" title="clear">🗑️</button>
+      </div>
+    </div>
+
+    <!-- chat -->
+    <div class="panel chat-panel">
+      <div class="panel-head"><span>Guess & chat 💬</span></div>
+      <div class="chat-list" id="chatList"></div>
+      <div class="chat-input-row">
+        <input type="text" id="chatInput" maxlength="40" placeholder="Type your guess…" autocomplete="off">
+        <button class="send-btn" id="sendBtn">➤</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- overlays -->
+<div class="overlay" id="ovChoose">
+  <div class="ov-card">
+    <div class="ov-title">Your turn to draw! ✍️</div>
+    <div class="ov-sub">Pick a word — harder words score more style points</div>
+    <div class="word-choices" id="wordChoices"></div>
+  </div>
+</div>
+
+<div class="overlay" id="ovSurprise">
+  <div class="ov-card" style="border: 3px solid var(--grape); background: linear-gradient(135deg, var(--ink-2), #2a1f4d)">
+    <div class="ov-title" style="color: #ffda79">🎁 SURPRISE HIJACK! 🎁</div>
+    <div class="ov-sub" id="surpriseSub">You got a surprise word change! Select a word to hijack the drawing word:</div>
+    <div class="word-choices" id="surpriseChoices"></div>
+    <button class="word-choice" id="btnSurpriseSkip" style="margin-top: 15px; background: rgba(255,255,255,0.08); font-size: 15px; border-color: rgba(255,255,255,0.2); width: auto; align-self: center; padding: 10px 24px;">No thanks, let them choose ➔</button>
+  </div>
+</div>
+
+<div class="overlay" id="ovWaiting">
+  <div class="ov-card">
+    <div class="ov-title">⏳ Waiting for Surprise…</div>
+    <div class="ov-sub" id="waitingSub">A surprise word hijack is in progress! Waiting to see if they override your selection…</div>
+  </div>
+</div>
+
+<div class="overlay" id="ovResult">
+  <div class="ov-card">
+    <div class="ov-title" id="resultTitle">Time's up!</div>
+    <div class="ov-sub">The word was</div>
+    <div class="reveal-word" id="revealWord">???</div>
+    <div class="score-rows" id="scoreRows"></div>
+  </div>
+</div>
+
+<div class="overlay" id="ovFinal">
+  <div class="ov-card">
+    <div class="ov-title">🏆 Final results</div>
+    <div class="podium" id="podium"></div>
+    <div class="score-rows" id="finalRows"></div>
+    <button class="big-btn" id="againBtn">Play again 🔁</button>
+  </div>
+</div>
+
+<div class="announce" id="announce"></div>
+<div id="fx"></div>
+<div id="toast"></div>
+
+<script>
+/* ============================================================
+   DRAWKARO — a skribbl-style party game in one file.
+   Multiplayer note: swap the Bot engine for a WebSocket client
+   (see net stubs at bottom) to make this a real online game.
+============================================================ */
+"use strict";
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const rand = (a,b) => a + Math.random()*(b-a);
+const irand = (a,b) => Math.floor(rand(a,b+1));
+const pick = arr => arr[Math.floor(Math.random()*arr.length)];
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+
+/* ---------------- DATA: words & bot doodles ---------------- */
+// Doodles are normalized stroke lists so bots can genuinely draw.
+// pts are [x,y] in 0..1 space. c = color, w = width (relative).
+const DOODLES = {
+  sun: [
+    {c:'#f5a623',w:.9,circle:[.5,.42,.16]},
+    ...[0,45,90,135,180,225,270,315].map(a=>{
+      const r=a*Math.PI/180, x=.5, y=.42;
+      return {c:'#f5a623',w:.7,pts:[[x+Math.cos(r)*.2,y+Math.sin(r)*.2],[x+Math.cos(r)*.3,y+Math.sin(r)*.3]]};
+    }),
+    {c:'#f5a623',w:.5,pts:[[.44,.42],[.45,.44]]},{c:'#f5a623',w:.5,pts:[[.55,.42],[.56,.44]]},
+    {c:'#f5a623',w:.5,pts:[[.44,.5],[.5,.53],[.56,.5]]}
+  ],
+  house: [
+    {c:'#8d5524',w:.9,pts:[[.28,.5],[.28,.82],[.72,.82],[.72,.5]]},
+    {c:'#d0021b',w:.9,pts:[[.22,.52],[.5,.26],[.78,.52]]},
+    {c:'#4a90d9',w:.7,pts:[[.34,.58],[.34,.68],[.44,.68],[.44,.58],[.34,.58]]},
+    {c:'#8d5524',w:.7,pts:[[.55,.82],[.55,.62],[.66,.62],[.66,.82]]},
+    {c:'#666',w:.5,pts:[[.6,.32],[.6,.24],[.66,.24],[.66,.37]]}
+  ],
+  cat: [
+    {c:'#333',w:.8,circle:[.5,.42,.15]},
+    {c:'#333',w:.8,pts:[[.38,.32],[.34,.18],[.45,.28]]},
+    {c:'#333',w:.8,pts:[[.62,.32],[.66,.18],[.55,.28]]},
+    {c:'#333',w:.6,pts:[[.44,.4],[.45,.42]]},{c:'#333',w:.6,pts:[[.56,.4],[.57,.42]]},
+    {c:'#e77',w:.5,pts:[[.49,.46],[.51,.46],[.5,.48],[.49,.46]]},
+    {c:'#333',w:.4,pts:[[.36,.46],[.26,.44]]},{c:'#333',w:.4,pts:[[.36,.49],[.26,.5]]},
+    {c:'#333',w:.4,pts:[[.64,.46],[.74,.44]]},{c:'#333',w:.4,pts:[[.64,.49],[.74,.5]]},
+    {c:'#333',w:.8,pts:[[.42,.56],[.4,.78],[.6,.78],[.58,.56]]},
+    {c:'#333',w:.7,pts:[[.6,.74],[.72,.7],[.74,.58]]}
+  ],
+  fish: [
+    {c:'#2b7de9',w:.9,pts:[[.3,.5],[.42,.38],[.6,.36],[.7,.46],[.7,.54],[.6,.62],[.42,.6],[.3,.5]]},
+    {c:'#2b7de9',w:.8,pts:[[.3,.5],[.2,.4],[.2,.6],[.3,.5]]},
+    {c:'#123',w:.5,pts:[[.62,.44],[.63,.46]]},
+    {c:'#2b7de9',w:.5,pts:[[.46,.42],[.44,.56]]},{c:'#2b7de9',w:.5,pts:[[.53,.4],[.51,.58]]},
+    {c:'#9cf',w:.4,circle:[.78,.34,.02]},{c:'#9cf',w:.4,circle:[.82,.28,.025]}
+  ],
+  tree: [
+    {c:'#8d5524',w:1,pts:[[.48,.82],[.48,.55],[.52,.55],[.52,.82]]},
+    {c:'#2e8b57',w:.9,circle:[.5,.38,.17]},
+    {c:'#2e8b57',w:.9,circle:[.38,.46,.11]},
+    {c:'#2e8b57',w:.9,circle:[.62,.46,.11]},
+    {c:'#3aa76d',w:.6,pts:[[.42,.34],[.48,.3]]},{c:'#3aa76d',w:.6,pts:[[.55,.4],[.6,.44]]}
+  ],
+  car: [
+    {c:'#d0021b',w:.9,pts:[[.22,.6],[.3,.6],[.36,.46],[.62,.46],[.7,.6],[.78,.6],[.78,.7],[.22,.7],[.22,.6]]},
+    {c:'#123',w:.8,circle:[.34,.72,.06]},
+    {c:'#123',w:.8,circle:[.64,.72,.06]},
+    {c:'#9cf',w:.6,pts:[[.4,.48],[.48,.48],[.48,.58],[.38,.58],[.4,.48]]},
+    {c:'#9cf',w:.6,pts:[[.52,.48],[.6,.48],[.62,.58],[.52,.58],[.52,.48]]}
+  ],
+  star: [
+    {c:'#f8c51c',w:1,pts:[[.5,.2],[.58,.42],[.8,.42],[.62,.55],[.7,.78],[.5,.63],[.3,.78],[.38,.55],[.2,.42],[.42,.42],[.5,.2]]},
+    {c:'#f8c51c',w:.5,pts:[[.46,.48],[.47,.5]]},{c:'#f8c51c',w:.5,pts:[[.54,.48],[.55,.5]]}
+  ],
+  heart: [
+    {c:'#e0245e',w:1,pts:[[.5,.75],[.28,.52],[.24,.38],[.32,.28],[.44,.3],[.5,.4],[.56,.3],[.68,.28],[.76,.38],[.72,.52],[.5,.75]]},
+    {c:'#ff7aa2',w:.6,pts:[[.34,.36],[.38,.32]]}
+  ],
+  pizza: [
+    {c:'#e8a33d',w:.9,pts:[[.5,.78],[.28,.3],[.72,.3],[.5,.78]]},
+    {c:'#d0021b',w:.7,pts:[[.26,.28],[.5,.22],[.74,.28]]},
+    {c:'#d0021b',w:.7,circle:[.45,.4,.035]},
+    {c:'#d0021b',w:.7,circle:[.56,.48,.03]},
+    {c:'#d0021b',w:.7,circle:[.48,.58,.03]},
+    {c:'#2e8b57',w:.4,pts:[[.4,.48],[.42,.5]]}
+  ],
+  umbrella: [
+    {c:'#7b3fbf',w:.9,pts:[[.24,.44],[.32,.3],[.5,.24],[.68,.3],[.76,.44]]},
+    {c:'#7b3fbf',w:.7,pts:[[.24,.44],[.32,.4],[.4,.44],[.5,.4],[.6,.44],[.68,.4],[.76,.44]]},
+    {c:'#555',w:.7,pts:[[.5,.24],[.5,.72],[.55,.78],[.6,.74]]},
+    {c:'#4a90d9',w:.4,pts:[[.3,.16],[.31,.2]]},{c:'#4a90d9',w:.4,pts:[[.7,.14],[.71,.18]]}
+  ],
+  snowman: [
+    {c:'#4a90d9',w:.8,circle:[.5,.7,.14]},
+    {c:'#4a90d9',w:.8,circle:[.5,.47,.1]},
+    {c:'#4a90d9',w:.8,circle:[.5,.29,.075]},
+    {c:'#123',w:.5,pts:[[.47,.27],[.48,.28]]},{c:'#123',w:.5,pts:[[.53,.27],[.54,.28]]},
+    {c:'#f5a623',w:.6,pts:[[.5,.3],[.58,.32]]},
+    {c:'#8d5524',w:.6,pts:[[.42,.46],[.28,.38]]},{c:'#8d5524',w:.6,pts:[[.58,.46],[.72,.38]]},
+    {c:'#123',w:.5,pts:[[.44,.2],[.56,.2]]},{c:'#123',w:.6,pts:[[.46,.2],[.46,.13],[.54,.13],[.54,.2]]}
+  ],
+  balloon: [
+    {c:'#d0021b',w:.9,circle:[.5,.36,.15]},
+    {c:'#d0021b',w:.6,pts:[[.47,.5],[.5,.53],[.53,.5]]},
+    {c:'#555',w:.4,pts:[[.5,.53],[.46,.62],[.53,.72],[.48,.82]]},
+    {c:'#ff9d9d',w:.5,pts:[[.43,.28],[.4,.34]]}
+  ],
+  glasses: [
+    {c:'#123',w:.8,circle:[.36,.5,.1]},
+    {c:'#123',w:.8,circle:[.64,.5,.1]},
+    {c:'#123',w:.7,pts:[[.46,.5],[.54,.5]]},
+    {c:'#123',w:.7,pts:[[.26,.48],[.16,.42]]},{c:'#123',w:.7,pts:[[.74,.48],[.84,.42]]}
+  ],
+  rocket: [
+    {c:'#c33',w:.9,pts:[[.5,.14],[.6,.34],[.6,.6],[.4,.6],[.4,.34],[.5,.14]]},
+    {c:'#4a90d9',w:.7,circle:[.5,.38,.05]},
+    {c:'#c33',w:.8,pts:[[.4,.5],[.3,.66],[.4,.62]]},
+    {c:'#c33',w:.8,pts:[[.6,.5],[.7,.66],[.6,.62]]},
+    {c:'#f5a623',w:.7,pts:[[.46,.62],[.5,.78],[.54,.62]]},
+    {c:'#f5a623',w:.5,pts:[[.5,.78],[.5,.84]]}
+  ],
+  icecream: [
+    {c:'#e8a33d',w:.8,pts:[[.42,.5],[.5,.82],[.58,.5]]},
+    {c:'#e8a33d',w:.5,pts:[[.44,.58],[.56,.58]]},{c:'#e8a33d',w:.5,pts:[[.46,.66],[.54,.66]]},
+    {c:'#ff9ecb',w:.9,circle:[.5,.4,.12]},
+    {c:'#d0021b',w:.6,circle:[.5,.26,.03]}
+  ],
+};
+// wide word pool (drawable words also live here for when YOU draw)
+const WORDS = [
+  'sun','house','cat','fish','tree','car','star','heart','pizza','umbrella','snowman','balloon','glasses','rocket','icecream',
+  'dog','banana','ghost','robot','rainbow','cloud','moon','cactus','guitar','pirate','dragon','castle','zombie','ninja','wizard',
+  'penguin','octopus','butterfly','volcano','tornado','mermaid','unicorn','dinosaur','spider','snail','whale','shark','crab',
+  'cheese','donut','burger','taco','cookie','cupcake','popcorn','sandwich','spaghetti','watermelon',
+  'laptop','headphones','camera','clock','candle','ladder','anchor','crown','sword','shield','treasure','key','magnet',
+  'football','basketball','skateboard','trampoline','parachute','helicopter','submarine','tractor','ambulance',
+  'sneeze','yawn','dance','karate','selfie','hiccup','tickle','juggle','moonwalk','facepalm'
+];
+const BOT_WORDS = Object.keys(DOODLES); // words bots can actually draw
+
+/* ---------------- languages ----------------
+   Each language: doodle words (keyed to DOODLES so bots can draw them) + extra guess words. */
+const LANGS = {
+  en:{name:'English', doodle:{sun:'sun',house:'house',cat:'cat',fish:'fish',tree:'tree',car:'car',star:'star',heart:'heart',pizza:'pizza',umbrella:'umbrella',snowman:'snowman',balloon:'balloon',glasses:'glasses',rocket:'rocket',icecream:'icecream'},
+      extra:WORDS.filter(w=>!(w in DOODLES))},
+  es:{name:'Español', doodle:{sun:'sol',house:'casa',cat:'gato',fish:'pez',tree:'árbol',car:'coche',star:'estrella',heart:'corazón',pizza:'pizza',umbrella:'paraguas',snowman:'muñeco de nieve',balloon:'globo',glasses:'gafas',rocket:'cohete',icecream:'helado'},
+      extra:['perro','plátano','fantasma','robot','arcoíris','nube','luna','cactus','guitarra','dragón','castillo','pingüino','mariposa','elefante','manzana','libro','silla','teléfono','zapato','rey']},
+  fr:{name:'Français', doodle:{sun:'soleil',house:'maison',cat:'chat',fish:'poisson',tree:'arbre',car:'voiture',star:'étoile',heart:'coeur',pizza:'pizza',umbrella:'parapluie',snowman:'bonhomme de neige',balloon:'ballon',glasses:'lunettes',rocket:'fusée',icecream:'glace'},
+      extra:['chien','banane','fantôme','robot','nuage','lune','cactus','guitare','dragon','château','pingouin','papillon','éléphant','pomme','livre','chaise','téléphone','chaussure','roi','couronne']},
+  de:{name:'Deutsch', doodle:{sun:'sonne',house:'haus',cat:'katze',fish:'fisch',tree:'baum',car:'auto',star:'stern',heart:'herz',pizza:'pizza',umbrella:'regenschirm',snowman:'schneemann',balloon:'luftballon',glasses:'brille',rocket:'rakete',icecream:'eis'},
+      extra:['hund','banane','geist','roboter','regenbogen','wolke','mond','kaktus','gitarre','drache','schloss','pinguin','schmetterling','elefant','apfel','buch','stuhl','telefon','schuh','könig']},
+  hi:{name:'हिन्दी', doodle:{sun:'सूरज',house:'घर',cat:'बिल्ली',fish:'मछली',tree:'पेड़',car:'गाड़ी',star:'तारा',heart:'दिल',pizza:'पिज़्ज़ा',umbrella:'छाता',snowman:'हिममानव',balloon:'गुब्बारा',glasses:'चश्मा',rocket:'रॉकेट',icecream:'आइसक्रीम'},
+      extra:['कुत्ता','केला','भूत','रोबोट','इंद्रधनुष','बादल','चाँद','गिटार','किला','तितली','हाथी','सेब','किताब','कुर्सी','जूता','राजा','मोर','शेर','नदी','पतंग']},
+  ta:{name:'தமிழ்', doodle:{sun:'சூரியன்',house:'வீடு',cat:'பூனை',fish:'மீன்',tree:'மரம்',car:'கார்',star:'நட்சத்திரம்',heart:'இதயம்',pizza:'பீட்சா',umbrella:'குடை',snowman:'பனிமனிதன்',balloon:'பலூன்',glasses:'கண்ணாடி',rocket:'ராக்கெட்',icecream:'ஐஸ்கிரீம்'},
+      extra:['நாய்','வாழைப்பழம்','பேய்','ரோபோ','வானவில்','மேகம்','நிலா','கிட்டார்','கோட்டை','பட்டாம்பூச்சி','யானை','ஆப்பிள்','புத்தகம்','நாற்காலி','காலணி','ராஜா','மயில்','சிங்கம்','ஆறு','பட்டம்']},
+};
+function langWordPool(){
+  const L=LANGS[state.settings.lang];
+  const custom=state.settings.customWords;
+  if(state.settings.customOnly && custom.length>=4) return [...custom];
+  return [...Object.values(L.doodle), ...L.extra, ...custom];
+}
+function doodleKeyFor(word){
+  const L=LANGS[state.settings.lang];
+  for(const k in L.doodle) if(L.doodle[k]===word) return k;
+  return null;
+}
+
+/* ---------------- avatars ---------------- */
+const FACES = ['🦊','🐸','🐼','🐙','🦄','🐯','🐨','🦖','🐷','👾','🤖','🐝','🦩','🐢','🦉'];
+const AV_COLORS = ['#ff6b6b','#ffd166','#35ccb0','#4ea8de','#9b8cff','#ff9ecb','#f5a623','#3ddc97'];
+const BOT_NAMES = ['PixelPam','SirSketch','DoodleDee','InkyMike','CrayonKai','ScribbleZoe','MsSmudge','ArtVandelay'];
+
+/* ---------------- audio (tiny synth sfx) ---------------- */
+const AudioFX = (()=> {
+  let ctx=null, on=true;
+  const ac = ()=> ctx || (ctx = new (window.AudioContext||window.webkitAudioContext)());
+  function tone(f,dur,type='sine',vol=.16,slideTo){
+    if(!on) return;
+    try{
+      const c=ac(), o=c.createOscillator(), g=c.createGain();
+      o.type=type; o.frequency.value=f;
+      if(slideTo) o.frequency.exponentialRampToValueAtTime(slideTo,c.currentTime+dur);
+      g.gain.setValueAtTime(vol,c.currentTime);
+      g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+dur);
+      o.connect(g).connect(c.destination); o.start(); o.stop(c.currentTime+dur);
+    }catch(e){}
+  }
+  return {
+    toggle(){on=!on; return on;},
+    correct(){ tone(523,.12,'triangle',.2); setTimeout(()=>tone(659,.12,'triangle',.2),110); setTimeout(()=>tone(784,.22,'triangle',.22),220); },
+    wrong(){ tone(196,.2,'sawtooth',.09,140); },
+    close(){ tone(440,.1,'sine',.12); setTimeout(()=>tone(494,.12,'sine',.12),100); },
+    tick(){ tone(880,.05,'square',.05); },
+    pop(){ tone(700,.06,'sine',.1,900); },
+    turn(){ tone(392,.14,'triangle',.14); setTimeout(()=>tone(523,.2,'triangle',.16),140); },
+    win(){ [523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,.25,'triangle',.2),i*160)); },
+  };
+})();
+
+/* ---------------- fx layer: emoji bursts, confetti, toast ---------------- */
+const fxLayer = $('#fx');
+function emojiBurst(emojis, n=6, xPct){
+  for(let i=0;i<n;i++){
+    const el=document.createElement('div');
+    el.className='fly';
+    el.textContent=pick(emojis);
+    el.style.left=(xPct!=null?xPct:rand(20,80))+ '%';
+    el.style.bottom=rand(8,22)+'%';
+    el.style.setProperty('--rot',irand(-40,40)+'deg');
+    el.style.animationDelay=(i*70)+'ms';
+    el.style.fontSize=irand(24,40)+'px';
+    fxLayer.appendChild(el);
+    setTimeout(()=>el.remove(),2100);
+  }
+}
+function confetti(n=90){
+  const colors=['#ff6b6b','#ffd166','#35ccb0','#4ea8de','#9b8cff','#ff9ecb'];
+  for(let i=0;i<n;i++){
+    const el=document.createElement('div');
+    el.className='confetti';
+    el.style.left=rand(0,100)+'%';
+    el.style.background=pick(colors);
+    el.style.animationDuration=rand(1.6,3.2)+'s';
+    el.style.animationDelay=rand(0,.8)+'s';
+    el.style.borderRadius=Math.random()<.5?'50%':'2px';
+    fxLayer.appendChild(el);
+    setTimeout(()=>el.remove(),4200);
+  }
+}
+let toastT;
+function toast(msg){
+  const t=$('#toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+/* background doodles */
+(()=>{ const em=['✏️','🖌️','⭐','🎨','💡','🌈','🐟','🍕','🚀','☂️','🎈','🐱'];
+  const bg=$('#bgDoodles');
+  for(let i=0;i<14;i++){ const s=document.createElement('span');
+    s.textContent=pick(em); s.style.left=rand(2,92)+'%'; s.style.top=rand(2,90)+'%';
+    s.style.animationDelay=rand(0,8)+'s'; s.style.fontSize=irand(26,54)+'px'; bg.appendChild(s);}
+})();
+
+/* ---------------- state ---------------- */
+const state = {
+  you: {id: 'p_' + Math.random().toString(36).slice(2, 9), name:'You', face:'🦊', color:AV_COLORS[0]},
+  players: [],           // {id,name,face,color,score,isYou,guessed,roundGain}
+  settings: {players:5, lang:'en', drawTime:60, rounds:3, wordCount:3, hints:2, mode:'normal', customWords:[], customOnly:false, surpriseHijack:true},
+  roomCode:null, isPrivate:false, hintTimes:[],
+  totalRounds: 3, drawTime: 60,
+  round: 1, turnIdx: 0, order: [],
+  word:'', revealed:[], drawerId:null,
+  timeLeft: 0, timerId:null, phase:'idle',
+  botTimers:[], micOn:false, roomBots:[], roomJoinT:null,
+  hostId: null,
+  kickVotes: {},
+  surpriseTurns: [],
+  surpriseActive: false,
+  surprisePlayerId: null,
+  surpriseWordChoice: null,
+  surpriseWords: [],
+  drawerWordChoice: null,
+  surpriseSkipped: false,
+  currentGlobalTurnIndex: 0
+};
+
+/* ================= LOBBY ================= */
+let avFace=0, avCol=0;
+function paintAvatarBig(){ const a=$('#avatarBig'); a.textContent=FACES[avFace]; a.style.background=AV_COLORS[avCol]; }
+$('#avPrev').onclick=()=>{avFace=(avFace-1+FACES.length)%FACES.length;paintAvatarBig();AudioFX.pop();};
+$('#avNext').onclick=()=>{avFace=(avFace+1)%FACES.length;paintAvatarBig();AudioFX.pop();};
+$('#avColor').onclick=()=>{avCol=(avCol+1)%AV_COLORS.length;paintAvatarBig();AudioFX.pop();};
+paintAvatarBig();
+
+function grabIdentity(){
+  if(!state.you.id) state.you.id = 'p_' + Math.random().toString(36).slice(2, 9);
+  state.you.name = $('#nameInput').value.trim() || 'You';
+  state.you.face = FACES[avFace]; state.you.color = AV_COLORS[avCol];
+}
+function readRoomSettings(){
+  const words=$('#customWords').value.split(',').map(w=>w.trim().toLowerCase()).filter(w=>w.length>=2&&w.length<=24);
+  state.settings={
+    players:+$('#setPlayers').value, lang:$('#setLang').value,
+    drawTime:+$('#setTime').value, rounds:+$('#setRounds').value,
+    wordCount:+$('#setWordCount').value, hints:+$('#setHints').value,
+    mode:$('#setMode').value,
+    customWords:[...new Set(words)],
+    customOnly:$('#customOnly').classList.contains('on'),
+    surpriseHijack:$('#surpriseHijack').classList.contains('on'),
+  };
+}
+
+/* ----- quick play ----- */
+$('#playBtn').onclick=()=>{
+  grabIdentity();
+  state.settings={players:5,lang:$('#langSel').value,drawTime:60,rounds:3,wordCount:3,hints:2,mode:'normal',customWords:[],customOnly:false,surpriseHijack:true};
+  state.isPrivate=false; state.roomCode=null;
+  startGame();
+};
+
+/* ----- private room ----- */
+const ROOM_CHARS='ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+const makeCode=()=>Array.from({length:6},()=>ROOM_CHARS[irand(0,ROOM_CHARS.length-1)]).join('');
+
+function openRoom(code){
+  grabIdentity();
+  state.roomCode=code; state.isPrivate=true; state.roomBots=[];
+  $('#setLang').value=$('#langSel').value;
+  $('#roomCodeChip').textContent=code;
+  $('#inviteLink').value=location.href.split('#')[0]+'#room='+code;
+  $('#lobby').classList.remove('active'); $('#room').classList.add('active');
+  renderRoomPlayers();
+  AudioFX.turn();
+
+  /* try to connect to server for real multiplayer */
+  sys('🔗 Connecting to multiplayer server...');
+  if(NET_URL) {
+    Net.connect(NET_URL);
+    setTimeout(()=>{
+      if(Net.ws && Net.ws.readyState===WebSocket.OPEN) {
+        sys('🔗 Connected! Waiting for friends to join…');
+      } else {
+        sys('⚠️ Running in offline simulation mode. Playing with AI players instead.');
+      }
+    },1000);
+  } else {
+    sys('⚠️ Offline mode: Playing with AI players.');
+  }
+}
+$('#createRoomBtn').onclick=()=>openRoom(makeCode());
+$('#joinBtn').onclick=()=>{
+  const c=$('#joinCode').value.trim().toUpperCase();
+  if(c.length<4){ toast('Enter a room code (4–6 letters)'); return; }
+  openRoom(c); toast(`Joined room ${c} — friends with this code land here too!`);
+};
+/* invite links: #room=CODE prefills the join box */
+(function(){ const m=location.hash.match(/room=([A-Z0-9]{4,6})/i);
+  if(m){ $('#joinCode').value=m[1].toUpperCase(); toast(`🔗 Invite detected — room ${m[1].toUpperCase()}. Enter your name & hit Join!`);} })();
+
+$('#copyLinkBtn').onclick=async function(){
+  const link=$('#inviteLink').value;
+  try{ await navigator.clipboard.writeText(link); }
+  catch(e){ $('#inviteLink').select(); document.execCommand('copy'); }
+  this.textContent='✅ Copied!'; toast('Invite link copied — send it to your friends!');
+  setTimeout(()=>this.textContent='📋 Copy link',1600);
+};
+$('#customOnly').onclick=function(){ this.classList.toggle('on'); AudioFX.pop(); };
+$('#surpriseHijack').onclick=function(){ this.classList.toggle('on'); AudioFX.pop(); };
+$('#setPlayers').onchange=()=>{ simulateJoins(); renderRoomPlayers(); };
+$('#leaveRoomBtn').onclick=()=>{
+  clearTimeout(state.roomJoinT);
+  $('#room').classList.remove('active'); $('#lobby').classList.add('active');
+};
+
+function renderRoomPlayers(){
+  const wrap=$('#roomPlayers'); wrap.innerHTML='';
+  const target=+$('#setPlayers').value;
+  const me=document.createElement('div');
+  me.className='slot';
+  const isHost = (state.hostId === null || state.hostId === state.you.id);
+  const myTag = isHost ? '👑 HOST (you)' : '(you)';
+  me.innerHTML=`<div class="p-avatar" style="background:${state.you.color}">${state.you.face}</div>
+    <div><div class="s-name">${esc(state.you.name)}</div><div class="s-tag">${myTag}</div></div>`;
+  wrap.appendChild(me);
+  state.roomBots.forEach((b,i)=>{
+    const d=document.createElement('div'); d.className='slot';
+    const kickHtml = isHost ? `<button class="kick" title="kick player">✕</button>` : `<button class="kick-vote" title="Vote to kick player">👢</button>`;
+    d.innerHTML=`<div class="p-avatar" style="background:${b.color}">${b.face}</div>
+      <div><div class="s-name">${esc(b.name)}</div><div class="s-tag">READY</div></div>
+      ${kickHtml}`;
+    if (isHost) {
+      d.querySelector('.kick').onclick=()=>{
+        state.roomBots.splice(i,1); renderRoomPlayers();
+        toast(`👢 ${b.name} was kicked`); AudioFX.wrong(); simulateJoins();
+      };
+    } else {
+      const voteBtn = d.querySelector('.kick-vote');
+      if (voteBtn) {
+        voteBtn.onclick = () => {
+          handleVoteKickClick(b.id);
+        };
+      }
+    }
+    wrap.appendChild(d);
+  });
+  for(let i=state.roomBots.length+1;i<target;i++){
+    const d=document.createElement('div'); d.className='slot empty'; d.textContent='waiting…'; wrap.appendChild(d);
+  }
+  $('#roomCount').textContent=`(${state.roomBots.length+1}/${target})`;
+
+  // Configure start button based on host status
+  const startBtn = $('#startRoomBtn');
+  if (isHost) {
+    startBtn.disabled = false;
+    startBtn.textContent = 'Start game! 🚀';
+    startBtn.style.opacity = '1';
+    startBtn.style.pointerEvents = 'auto';
+  } else {
+    startBtn.disabled = true;
+    startBtn.textContent = '👑 Waiting for Host';
+    startBtn.style.opacity = '0.5';
+    startBtn.style.pointerEvents = 'none';
+  }
+}
+function simulateJoins(){
+  clearTimeout(state.roomJoinT);
+  /* bots only join quick play, not private rooms */
+}
+$('#startRoomBtn').onclick=()=>{
+  const isHost = (state.hostId === null || state.hostId === state.you.id);
+  if (!isHost) {
+    toast('❌ Only the host can start the game!');
+    return;
+  }
+  if(state.roomBots.length<1){ toast('❌ Waiting for friends to join via invite link…'); return; }
+  readRoomSettings();
+  if(state.settings.customOnly && state.settings.customWords.length<4){
+    toast('⚠️ Need at least 4 custom words for custom-only mode'); return;
+  }
+  clearTimeout(state.roomJoinT);
+
+  // send game start to server if connected
+  if(Net.ws && Net.ws.readyState===WebSocket.OPEN) {
+    Net.startGame(state.settings);
+  } else {
+    // local game only
+    $('#room').classList.remove('active');
+    startGame();
+  }
+};
+
+function cleanAndDeduplicate(playersList) {
+  const seenIds = new Set();
+  const uniqueIdPlayers = [];
+
+  for (const p of playersList) {
+    if (!p.id) continue;
+    if (!seenIds.has(p.id)) {
+      seenIds.add(p.id);
+      uniqueIdPlayers.push(p);
+    }
+  }
+
+  const nameCounts = {};
+  for (const p of uniqueIdPlayers) {
+    let baseName = p.name || 'Anonymous';
+    let finalName = baseName;
+    if (nameCounts[baseName]) {
+      nameCounts[baseName]++;
+      finalName = `${baseName} (${nameCounts[baseName] - 1})`;
+    } else {
+      nameCounts[baseName] = 1;
+    }
+    p.name = finalName;
+  }
+
+  return uniqueIdPlayers;
+}
+
+/* ================= PLAYERS ================= */
+function buildPlayers(){
+  let bots=[];
+  if(state.isPrivate){
+    /* private room: use only actual joined players, no auto-fill */
+    bots=state.roomBots;
+    const rawPlayers=[
+      {id:'you',name:state.you.name,face:state.you.face,color:state.you.color,score:0,isYou:true,guessed:false,roundGain:0,persona:null},
+      ...bots.map((b)=>({id:b.id,name:b.name,face:b.face,color:b.color,score:0,isYou:false,guessed:false,roundGain:0,persona:b.persona||{skill:0.5,speed:1,chatty:0}}))
+    ];
+    state.players = cleanAndDeduplicate(rawPlayers);
+  } else {
+    /* quick play: fill with bots to reach target count */
+    const n=state.settings.players-1;
+    const names=[...BOT_NAMES].sort(()=>Math.random()-.5).slice(0,n);
+    bots=names.map(nm=>({name:nm,face:pick(FACES),color:pick(AV_COLORS),persona:{skill:rand(.45,.9),speed:rand(.7,1.3),chatty:rand(.3,.9)}}));
+    const rawPlayers=[
+      {id:'you',name:state.you.name,face:state.you.face,color:state.you.color,score:0,isYou:true,guessed:false,roundGain:0,persona:null},
+      ...bots.map((b,i)=>({id:'bot'+i,name:b.name,face:b.face,color:b.color,score:0,isYou:false,guessed:false,roundGain:0,persona:b.persona}))
+    ];
+    state.players = cleanAndDeduplicate(rawPlayers);
+  }
+}
+function renderPlayers(){
+  const list=$('#playersList');
+  const sorted=[...state.players].sort((a,b)=>b.score-a.score);
+  list.innerHTML='';
+  sorted.forEach((p,i)=>{
+    const div=document.createElement('div');
+    div.className='player'+(p.guessed?' guessed':'')+(p.id===state.drawerId?' drawing-now':'');
+    div.dataset.pid=p.id;
+    const isMe = p.isYou || p.id === 'you';
+    const kickBtnHtml = !isMe ? `<button class="p-kick-btn" title="Vote to kick player">👢</button>` : '';
+    div.innerHTML=`
+      <div class="p-avatar" style="background:${p.color}" data-av="${p.id}">${p.face}</div>
+      <div class="p-info">
+        <div class="p-name">#${i+1} ${esc(p.name)}${p.isYou?' <span class="you">(you)</span>':''}</div>
+        <div class="p-score">${p.score} pts</div>
+      </div>
+      <div class="p-badge">${p.id===state.drawerId?'✏️':(p.guessed?'✅':(i===0&&p.score>0?'👑':''))}</div>
+      ${kickBtnHtml}`;
+    if (!isMe) {
+      const btn = div.querySelector('.p-kick-btn');
+      if (btn) {
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          handleVoteKickClick(p.id);
+        };
+      }
+    }
+    list.appendChild(div);
+  });
+}
+
+function handleVoteKickClick(targetId) {
+  const p = state.players.find(x => x.id === targetId) || state.roomBots.find(x => x.id === targetId);
+  if (!p) return;
+
+  state.kickVotes = state.kickVotes || {};
+  state.kickVotes[targetId] = state.kickVotes[targetId] || [];
+
+  if (state.kickVotes[targetId].includes('you')) {
+    toast(`Already voted to kick ${p.name}`);
+    return;
+  }
+
+  state.kickVotes[targetId].push('you');
+  
+  const isLobby = (state.phase === 'idle');
+  const totalPlayers = isLobby ? (state.roomBots.length + 1) : state.players.length;
+  const requiredVotes = Math.max(2, Math.floor(totalPlayers / 2) + 1);
+
+  chatMsg(`🗳️ <b>${esc(state.you.name)}</b> voted to kick <b>${esc(p.name)}</b> (${state.kickVotes[targetId].length}/${requiredVotes})`, 'sys');
+  AudioFX.pop();
+
+  if (state.kickVotes[targetId].length >= requiredVotes) {
+    kickPlayerLocally(targetId);
+  } else {
+    triggerBotVotekicks(targetId);
+  }
+}
+
+function triggerBotVotekicks(targetId) {
+  const p = state.players.find(x => x.id === targetId) || state.roomBots.find(x => x.id === targetId);
+  if (!p) return;
+
+  const isLobby = (state.phase === 'idle');
+  const activeBots = (isLobby ? state.roomBots : state.players).filter(x => x.id !== 'you' && x.id !== targetId);
+  if (!activeBots.length) return;
+
+  const shuffledBots = [...activeBots].sort(() => Math.random() - 0.5);
+  let delay = 1000;
+
+  shuffledBots.forEach(bot => {
+    setTimeout(() => {
+      const isStillInRoom = (state.phase === 'idle' ? state.roomBots : state.players).some(x => x.id === targetId);
+      if (!isStillInRoom) return;
+
+      const currentVotes = state.kickVotes[targetId] || [];
+      const currentTotalPlayers = state.phase === 'idle' ? (state.roomBots.length + 1) : state.players.length;
+      const requiredVotes = Math.max(2, Math.floor(currentTotalPlayers / 2) + 1);
+
+      if (currentVotes.length < requiredVotes && !currentVotes.includes(bot.id)) {
+        currentVotes.push(bot.id);
+        state.kickVotes[targetId] = currentVotes;
+        chatMsg(`🗳️ <b>${esc(bot.name)}</b> voted to kick <b>${esc(p.name)}</b> (${currentVotes.length}/${requiredVotes})`, 'sys');
+        AudioFX.pop();
+
+        if (currentVotes.length >= requiredVotes) {
+          kickPlayerLocally(targetId);
+        }
+      }
+    }, delay);
+    delay += rand(1000, 2500);
+  });
+}
+
+function kickPlayerLocally(playerId) {
+  const p = state.players.find(x => x.id === playerId) || state.roomBots.find(x => x.id === playerId);
+  if (!p) return;
+  const name = p.name;
+
+  state.roomBots = state.roomBots.filter(x => x.id !== playerId);
+  state.players = state.players.filter(x => x.id !== playerId);
+  
+  const wasDrawer = (state.drawerId === playerId);
+  state.order = state.order.filter(id => id !== playerId);
+
+  if (wasDrawer && state.phase === 'draw') {
+    endTurn('time');
+  }
+
+  renderRoomPlayers();
+  renderPlayers();
+  chatMsg(`👢 <b>${esc(name)}</b> was votekicked!`, 'sys');
+  AudioFX.wrong();
+
+  peerConnections.get(playerId)?.close();
+  peerConnections.delete(playerId);
+  const audio = audioElements.get(playerId);
+  if(audio) { audio.pause(); audio.remove(); audioElements.delete(playerId); }
+}
+
+function esc(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function scorePop(pid,amt){
+  const row=$(`.player[data-pid="${pid}"]`); if(!row) return;
+  const el=document.createElement('div'); el.className='p-rankup'; el.textContent='+'+amt;
+  row.appendChild(el); setTimeout(()=>el.remove(),1400);
+}
+
+/* ================= CHAT ================= */
+function chatMsg(html, cls=''){
+  const list=$('#chatList');
+  const d=document.createElement('div'); d.className='msg '+cls; d.innerHTML=html;
+  list.appendChild(d);
+  while(list.children.length>60) list.firstChild.remove();
+  list.scrollTop=list.scrollHeight;
+}
+const sys = t => chatMsg(t,'sys');
+
+/* ================= HINT TILES ================= */
+function renderHint(){
+  const wrap=$('#hintTiles'); wrap.innerHTML='';
+  const isDrawer = state.drawerId==='you';
+  $('#hintTopic').textContent = state.phase!=='draw' ? 'Get ready' :
+    (isDrawer ? 'You are drawing' : `${nameOf(state.drawerId)} is drawing — guess!`);
+  if(!state.word){ return; }
+  const meGuessed = state.players.find(p=>p.isYou)?.guessed;
+  if(state.settings.mode==='hidden' && !isDrawer && !meGuessed){
+    const t=document.createElement('div'); t.className='tile';
+    t.style.background='var(--grape)'; t.style.boxShadow='0 3px 0 #5b4bc0'; t.style.color='#fff';
+    t.textContent='HIDDEN 🙈'; t.style.padding='0 12px'; wrap.appendChild(t);
+    return;
+  }
+  [...state.word].forEach((ch,i)=>{
+    const t=document.createElement('div');
+    if(ch===' '){ t.className='tile space'; }
+    else if(isDrawer || state.revealed[i] || meGuessed){
+      t.className='tile'; t.textContent=ch.toUpperCase();
+    } else { t.className='tile blank'; t.textContent='?'; }
+    wrap.appendChild(t);
+  });
+}
+function revealLetter(){
+  const idxs=state.word.split('').map((c,i)=>(!state.revealed[i]&&c!==' ')?i:-1).filter(i=>i>=0);
+  if(idxs.length<=1) return; // never fully reveal
+  const i=pick(idxs); state.revealed[i]=true; renderHint();
+  const tiles=$$('#hintTiles .tile'); if(tiles[i]) tiles[i].classList.add('pop');
+  AudioFX.pop(); sys('💡 A letter was revealed!');
+}
+
+/* ================= TIMER ================= */
+const RING_LEN=131.9;
+function startTimer(){
+  stopTimer();
+  state.timeLeft=state.drawTime;
+  paintTimer();
+  state.timerId=setInterval(()=>{
+    state.timeLeft--;
+    paintTimer();
+    if(state.hintTimes.includes(state.timeLeft) && state.settings.mode!=='hidden'
+       && !youGuessed() && state.drawerId!=='you' && state.word.length>2){
+      revealLetter();
+    }
+    if(state.timeLeft<=10&&state.timeLeft>0) AudioFX.tick();
+    if(state.timeLeft<=0) endTurn('time');
+  },1000);
+}
+function stopTimer(){ clearInterval(state.timerId); state.timerId=null; }
+function paintTimer(){
+  $('#timerNum').textContent=Math.max(0,state.timeLeft);
+  const frac=state.timeLeft/state.drawTime;
+  const ring=$('#timerRing');
+  ring.style.strokeDashoffset=RING_LEN*(1-frac);
+  ring.style.stroke = frac>.5?'var(--teal)':frac>.2?'var(--sun)':'var(--bad)';
+}
+
+function startChoosingTimer() {
+  stopTimer();
+  state.timeLeft = state.drawTime;
+  paintChoosingTimer();
+  state.timerId = setInterval(() => {
+    state.timeLeft--;
+    paintChoosingTimer();
+    if (state.timeLeft <= 0) {
+      stopTimer();
+      if (state.drawerId === 'you') {
+        autoPickWord();
+      }
+    }
+  }, 1000);
+}
+
+function paintChoosingTimer() {
+  $('#timerNum').textContent = Math.max(0, state.timeLeft);
+  const frac = state.timeLeft / state.drawTime;
+  const ring = $('#timerRing');
+  ring.style.strokeDashoffset = RING_LEN * (1 - frac);
+  ring.style.stroke = frac > 0.5 ? 'var(--teal)' : frac > 0.2 ? 'var(--sun)' : 'var(--bad)';
+
+  const sub = $('#ovChoose .ov-sub');
+  if (sub) {
+    sub.innerHTML = `Pick a word — Auto-picking in <b style="color:var(--bad)">${Math.max(0, state.timeLeft)}s</b>`;
+  }
+}
+
+function autoPickWord() {
+  $('#ovChoose').classList.remove('show');
+  $('#ovSurprise').classList.remove('show');
+  $('#ovWaiting').classList.remove('show');
+  let selectedWord = state.drawerWordChoice || '';
+  if (!selectedWord) {
+    const buttons = Array.from(document.querySelectorAll('#wordChoices .word-choice'));
+    if (buttons.length > 0) {
+      selectedWord = buttons[0].textContent;
+    } else {
+      selectedWord = pickBotWord();
+    }
+  }
+  beginTurn(selectedWord);
+  if (Net.ws && Net.ws.readyState === WebSocket.OPEN) {
+    Net.ws.send(JSON.stringify({
+      type: 'startTurn',
+      roomCode: state.roomCode,
+      word: selectedWord
+    }));
+  }
+}
+
+const youGuessed=()=>state.players.find(p=>p.isYou).guessed;
+const nameOf = id => {
+  if (id === 'you' || id === state.you.id) return state.you.name;
+  const p = state.players?.find(x => x.id === id);
+  if (p) return p.name;
+  const b = state.roomBots?.find(x => x.id === id);
+  if (b) return b.name;
+  return '?';
+};
+
+/* ================= CANVAS ENGINE ================= */
+const board=$('#board'), bctx=board.getContext('2d',{willReadFrequently:true});
+let ops=[];              // replayable ops: {t:'s',color,size,pts:[[nx,ny]..]} | {t:'f',x,y,color} | {t:'c'}
+let curStroke=null, tool='brush', brushColor='#22254a', brushSize=6;
+const PALETTE=['#22254a','#ffffff','#7f8c8d','#e74c3c','#e67e22','#f8c51c','#2ecc71','#1abc9c','#3498db','#9b59b6','#e84393','#8d5524'];
+const SIZES=[4,8,16];
+
+function fitCanvas(){
+  const shell=board.parentElement, dpr=Math.min(2,window.devicePixelRatio||1);
+  board.width=shell.clientWidth*dpr; board.height=shell.clientHeight*dpr;
+  bctx.setTransform(dpr,0,0,dpr,0,0);
+  replay();
+}
+window.addEventListener('resize',()=>{fitCanvas();});
+function cw(){return board.clientWidth} function ch(){return board.clientHeight}
+
+function replay(){
+  bctx.save(); bctx.setTransform(1,0,0,1,0,0);
+  bctx.fillStyle='#fff9ef'; bctx.fillRect(0,0,board.width,board.height); bctx.restore();
+  for(const op of ops) applyOp(op);
+}
+function applyOp(op){
+  if(op.t==='c'){ bctx.save(); bctx.setTransform(1,0,0,1,0,0); bctx.fillStyle='#fff9ef'; bctx.fillRect(0,0,board.width,board.height); bctx.restore(); return; }
+  if(op.t==='f'){ floodFill(op.x*cw(),op.y*ch(),op.color); return; }
+  drawPath(op.pts,op.color,op.size);
+}
+function drawPath(npts,color,size){
+  if(npts.length===0) return;
+  bctx.strokeStyle=color; bctx.lineWidth=size; bctx.lineCap='round'; bctx.lineJoin='round';
+  bctx.beginPath();
+  bctx.moveTo(npts[0][0]*cw(),npts[0][1]*ch());
+  if(npts.length===1) bctx.lineTo(npts[0][0]*cw()+.01,npts[0][1]*ch());
+  for(let i=1;i<npts.length;i++) bctx.lineTo(npts[i][0]*cw(),npts[i][1]*ch());
+  bctx.stroke();
+}
+function floodFill(px,py,hex){
+  const dpr=Math.min(2,window.devicePixelRatio||1);
+  px=Math.floor(px*dpr); py=Math.floor(py*dpr);
+  const W=board.width,H=board.height;
+  if(px<0||py<0||px>=W||py>=H) return;
+  const img=bctx.getImageData(0,0,W,H), d=img.data;
+  const at=(x,y)=>(y*W+x)*4;
+  const t=at(px,py), tr=d[t],tg=d[t+1],tb=d[t+2];
+  const R=parseInt(hex.slice(1,3),16),G=parseInt(hex.slice(3,5),16),B=parseInt(hex.slice(5,7),16);
+  if(Math.abs(tr-R)+Math.abs(tg-G)+Math.abs(tb-B)<12) return;
+  const match=i=>Math.abs(d[i]-tr)+Math.abs(d[i+1]-tg)+Math.abs(d[i+2]-tb)<60;
+  const stack=[[px,py]]; let guard=W*H;
+  while(stack.length&&guard-->0){
+    const [x,y]=stack.pop(); let x0=x;
+    while(x0>=0&&match(at(x0,y))) x0--;
+    x0++;
+    let up=false,dn=false;
+    while(x0<W&&match(at(x0,y))){
+      const i=at(x0,y); d[i]=R;d[i+1]=G;d[i+2]=B;d[i+3]=255;
+      if(y>0){ const m=match(at(x0,y-1)); if(m&&!up){stack.push([x0,y-1]);up=true;} if(!m)up=false; }
+      if(y<H-1){ const m=match(at(x0,y+1)); if(m&&!dn){stack.push([x0,y+1]);dn=true;} if(!m)dn=false; }
+      x0++;
+    }
+  }
+  bctx.putImageData(img,0,0);
+}
+
+/* pointer drawing (mouse + touch via pointer events) */
+let drawing=false;
+function evtPos(e){
+  const r = board.getBoundingClientRect();
+  const scrollX = window.scrollX || window.pageXOffset || 0;
+  const scrollY = window.pageYOffset || window.scrollY || 0;
+  
+  // Board position relative to the document
+  const boardDocLeft = r.left + scrollX;
+  const boardDocTop = r.top + scrollY;
+  
+  // Input position relative to the document
+  let pageX = e.pageX;
+  let pageY = e.pageY;
+  
+  // Touch support
+  if (e.touches && e.touches.length > 0) {
+    pageX = e.touches[0].pageX;
+    pageY = e.touches[0].pageY;
+  } else if (e.changedTouches && e.changedTouches.length > 0) {
+    pageX = e.changedTouches[0].pageX;
+    pageY = e.changedTouches[0].pageY;
+  }
+  
+  // Fallback to client metrics if page position is undefined
+  if (pageX === undefined || pageY === undefined) {
+    pageX = e.clientX + scrollX;
+    pageY = e.clientY + scrollY;
+  }
+  
+  // Correctly normalize coordinates regardless of scroll position or screen size
+  const x = (pageX - boardDocLeft) / Math.max(1, r.width);
+  const y = (pageY - boardDocTop) / Math.max(1, r.height);
+  
+  return [x, y];
+}
+
+// Prevent mobile scrolling when touching the canvas to draw
+const preventMobileScroll = (e) => {
+  if (state.drawerId === 'you' && state.phase === 'draw') {
+    if (e.cancelable) e.preventDefault();
+  }
+};
+board.addEventListener('touchstart', preventMobileScroll, { passive: false });
+board.addEventListener('touchmove', preventMobileScroll, { passive: false });
+
+board.addEventListener('pointerdown',e=>{
+  if(state.drawerId!=='you'||state.phase!=='draw') return;
+  e.preventDefault(); board.setPointerCapture(e.pointerId);
+  const [x,y]=evtPos(e);
+  if(tool==='fill'){
+    const op={t:'f',x,y,color:brushColor};
+    ops.push(op);
+    applyOp(op);
+    AudioFX.pop();
+    Net.sendOp(op);
+    return;
+  }
+  drawing=true;
+  curStroke={t:'s',color:tool==='eraser'?'#fff9ef':brushColor,size:tool==='eraser'?brushSize*2.4:brushSize,pts:[[x,y]]};
+  ops.push(curStroke);
+  drawPath(curStroke.pts,curStroke.color,curStroke.size);
+});
+board.addEventListener('pointermove',e=>{
+  if(!drawing||!curStroke) return;
+  e.preventDefault();
+  const [x,y]=evtPos(e), pts=curStroke.pts, last=pts[pts.length-1];
+  if(Math.hypot(x-last[0],y-last[1])<.003) return;
+  pts.push([x,y]);
+  drawPath(pts.slice(-2),curStroke.color,curStroke.size);
+  // send incremental updates to network
+  if(Net.ws && Net.ws.readyState===WebSocket.OPEN) {
+    Net.sendOp({t:'s',color:curStroke.color,size:curStroke.size,pts:[last,[x,y]]});
+  }
+});
+const endStroke=()=>{drawing=false;curStroke=null;};
+board.addEventListener('pointerup',endStroke);
+board.addEventListener('pointercancel',endStroke);
+
+/* toolbar */
+(function buildTools(){
+  const sw=$('#swatches');
+  PALETTE.forEach((c,i)=>{
+    const b=document.createElement('button'); b.className='swatch'+(c===brushColor?' on':'');
+    b.style.background=c; b.title=c;
+    b.onclick=()=>{brushColor=c;tool=(tool==='eraser')?'brush':tool;syncTools();sw.querySelectorAll('.swatch').forEach(x=>x.classList.remove('on'));b.classList.add('on');};
+    sw.appendChild(b);
+  });
+  const br=$('#brushes');
+  SIZES.forEach((s,i)=>{
+    const b=document.createElement('button'); b.className='brush'+(i===1?' on':'');
+    b.innerHTML=`<i style="width:${6+i*6}px;height:${6+i*6}px"></i>`;
+    b.onclick=()=>{brushSize=s;if(tool==='fill')tool='brush';br.querySelectorAll('.brush').forEach(x=>x.classList.remove('on'));b.classList.add('on');syncTools();};
+    br.appendChild(b);
+  });
+  brushSize=SIZES[1];
+})();
+function syncTools(){
+  $('#eraserBtn').classList.toggle('on',tool==='eraser');
+  $('#fillBtn').classList.toggle('on',tool==='fill');
+}
+$('#eraserBtn').onclick=()=>{tool=tool==='eraser'?'brush':'eraser';syncTools();};
+$('#fillBtn').onclick=()=>{tool=tool==='fill'?'brush':'fill';syncTools();};
+$('#undoBtn').onclick=()=>{ if(state.drawerId!=='you')return; ops.pop(); replay(); };
+$('#clearBtn').onclick=()=>{ if(state.drawerId!=='you')return; ops.push({t:'c'}); replay(); };
+function clearBoard(){ ops=[]; replay(); }
+
+/* canvas banner */
+function banner(msg,ms=2600){
+  const b=$('#canvasBanner'); b.textContent=msg; b.classList.add('show');
+  clearTimeout(banner._t); if(ms) banner._t=setTimeout(()=>b.classList.remove('show'),ms);
+}
+
+/* ================= GAME FLOW ================= */
+function startGame(networkOrder){
+  state.totalRounds=state.settings.rounds;
+  state.drawTime=state.settings.drawTime;
+  buildPlayers();
+  state.round=1; state.turnIdx=0; state.phase='idle';
+  state.currentGlobalTurnIndex = 0;
+  state.surpriseActive = false;
+  state.surprisePlayerId = null;
+  state.surpriseWordChoice = null;
+  state.surpriseWords = [];
+  state.drawerWordChoice = null;
+  state.surpriseSkipped = false;
+  state.surpriseTurns = state.settings.surpriseTurns || [];
+
+  if (networkOrder) {
+    state.order = networkOrder;
+  } else {
+    state.order=[...state.players].sort(()=>Math.random()-.5).map(p=>p.id);
+  }
+
+  // If local play and surpriseTurns is empty, generate it
+  if (state.surpriseTurns.length === 0) {
+    const totalTurns = state.order.length * state.totalRounds;
+    const numSurprises = Math.max(1, Math.min(4, totalTurns));
+    const temp = Array.from({length: totalTurns}, (_, i) => i);
+    temp.sort(() => Math.random() - 0.5);
+    state.surpriseTurns = temp.slice(0, numSurprises);
+  }
+  $('#lobby').classList.remove('active');
+  $('#room').classList.remove('active');
+  $('#game').classList.add('active');
+  $('#chatList').innerHTML='';
+  $('#turnTag').textContent = state.isPrivate ? `🔒 ${state.roomCode}` : '🌍 public';
+  fitCanvas(); clearBoard(); renderPlayers();
+  const langName=LANGS[state.settings.lang].name;
+  sys(`👋 Welcome, <b>${esc(state.you.name)}</b>! ${state.totalRounds} rounds · ${state.drawTime}s · ${langName}${state.settings.mode!=='normal'?' · '+state.settings.mode+' mode':''}${state.isPrivate?` · room <b>${state.roomCode}</b>`:''}`);
+  if(state.settings.customWords.length) sys(`📝 ${state.settings.customWords.length} custom words in the pool${state.settings.customOnly?' (custom only!)':''}`);
+  if(Net.ws && Net.ws.readyState===WebSocket.OPEN) {
+    sys(`🎙️ Multiplayer game! Enable mic (top-right) to hear other players.`);
+  }
+  emojiBurst(['🎨','✏️','🌈'],5);
+  setTimeout(nextTurn,900);
+}
+
+function nextTurn(){
+  clearBotTimers(); stopTimer();
+  if(state.turnIdx>=state.order.length){ state.turnIdx=0; state.round++; }
+  if(state.round>state.totalRounds){ return endGame(); }
+  const rawDrawerId = state.order[state.turnIdx];
+  state.drawerId = (rawDrawerId === state.you.id) ? 'you' : rawDrawerId;
+  state.players.forEach(p=>{p.guessed=false;p.roundGain=0;});
+  state.word=''; state.revealed=[];
+  clearBoard(); renderPlayers(); renderHint();
+  $('#roundNum').textContent=`${state.round} / ${state.totalRounds}`;
+  $('#tools').classList.toggle('disabled',state.drawerId!=='you');
+  state.phase='choosing';
+  AudioFX.turn();
+  startChoosingTimer();
+
+  state.surpriseActive = false;
+  state.surprisePlayerId = null;
+  state.surpriseWordChoice = null;
+  state.surpriseWords = [];
+  state.drawerWordChoice = null;
+  state.surpriseSkipped = false;
+  $('#ovSurprise').classList.remove('show');
+  $('#ovWaiting').classList.remove('show');
+
+  state.currentGlobalTurnIndex = (state.round - 1) * state.order.length + state.turnIdx;
+  const isSurpriseTurn = state.surpriseTurns.includes(state.currentGlobalTurnIndex);
+  const isHost = (state.hostId === null || state.hostId === state.you.id);
+
+  if (isHost && state.settings.surpriseHijack && isSurpriseTurn) {
+    const eligible = state.players.filter(p => p.id !== state.drawerId);
+    if (eligible.length > 0) {
+      const surprisePlayer = pick(eligible);
+      const pool = langWordPool();
+      const words = [...new Set(pool)].sort(() => Math.random() - 0.5).slice(0, 3);
+      if (Net.ws && Net.ws.readyState === WebSocket.OPEN) {
+        Net.ws.send(JSON.stringify({
+          type: 'surpriseTrigger',
+          roomCode: state.roomCode,
+          surprisePlayerId: surprisePlayer.id,
+          words: words
+        }));
+      } else {
+        localSurpriseTrigger(surprisePlayer.id, words);
+      }
+    }
+  }
+
+  if(state.drawerId==='you'){
+    const pool=langWordPool();
+    let opts=[...new Set(pool)].sort(()=>Math.random()-.5).slice(0,state.settings.wordCount);
+    if(state.settings.mode==='combo'){
+      const p2=[...new Set(pool)].sort(()=>Math.random()-.5);
+      opts=opts.map((w,i)=>w+' '+(p2.find(x=>x!==w&&!opts.includes(x))||p2[i]||w));
+    }
+    const wc=$('#wordChoices'); wc.innerHTML='';
+    opts.forEach(w=>{
+      const b=document.createElement('button'); b.className='word-choice'; b.textContent=w;
+      b.onclick=()=>{
+        $('#ovChoose').classList.remove('show');
+        if (state.surpriseActive && !state.surpriseSkipped) {
+          state.drawerWordChoice = w;
+          if (Net.ws && Net.ws.readyState === WebSocket.OPEN) {
+            Net.ws.send(JSON.stringify({
+              type: 'drawerSelectedWord',
+              roomCode: state.roomCode,
+              word: w
+            }));
+          }
+          $('#ovWaiting').classList.add('show');
+          const waitingSub = $('#waitingSub');
+          if (waitingSub) {
+            waitingSub.innerHTML = `You chose <b style="color:var(--sun)">${w.toUpperCase()}</b>. Waiting for <b>${esc(nameOf(state.surprisePlayerId))}</b> to decide...`;
+          }
+        } else {
+          beginTurn(w);
+          if (Net.ws && Net.ws.readyState === WebSocket.OPEN) {
+            Net.ws.send(JSON.stringify({
+              type: 'startTurn',
+              roomCode: state.roomCode,
+              word: w
+            }));
+          }
+        }
+      };
+      wc.appendChild(b);
+    });
+    $('#ovChoose').classList.add('show');
+    announce(`✏️ Your turn to draw!`);
+  } else {
+    announce(`🖌️ ${nameOf(state.drawerId)} is drawing…`);
+    sys(`✏️ <b>${esc(nameOf(state.drawerId))}</b> is choosing a word…`);
+    if (!state.isPrivate) {
+      setTimeout(()=> {
+        if (state.phase === 'choosing' && !state.surpriseActive) {
+          beginTurn(pickBotWord());
+        }
+      }, 1800);
+    }
+  }
+}
+function pickBotWord(){
+  const L=LANGS[state.settings.lang];
+  const drawable=Object.values(L.doodle);
+  if(state.settings.customOnly && state.settings.customWords.length>=4){
+    const c=pick(state.settings.customWords);
+    if(state.settings.mode==='combo'){ const d=pick(state.settings.customWords.filter(w=>w!==c)); state._botParts=[c,d]; return c+' '+d; }
+    return c;
+  }
+  if(state.settings.mode==='combo') {
+    const a=pick(drawable); const b=pick(drawable.filter(w=>w!==a));
+    state._botParts=[a,b]; return a+' '+b;
+  }
+  return pick(drawable);
+}
+
+function localSurpriseTrigger(surprisePlayerId, words) {
+  state.surpriseActive = true;
+  state.surprisePlayerId = surprisePlayerId;
+  state.surpriseWords = words;
+  state.surpriseWordChoice = null;
+  state.drawerWordChoice = null;
+  state.surpriseSkipped = false;
+
+  const surprisePlayerName = nameOf(surprisePlayerId);
+
+  // Announcement
+  chatMsg(`🎁 <b>${esc(surprisePlayerName)}</b> gets a Surprise Word Change opportunity!`, 'sys');
+  announce(`🎁 Surprise opportunity for ${surprisePlayerName}!`);
+
+  // Reset/hide overlays
+  $('#ovSurprise').classList.remove('show');
+  $('#ovWaiting').classList.remove('show');
+
+  // Determine role
+  const isSurprisePlayer = (surprisePlayerId === 'you' || surprisePlayerId === state.you.id);
+
+  if (isSurprisePlayer) {
+    // Show surprise overlay
+    const title = $('#ovSurprise .ov-title');
+    title.textContent = '🎁 SURPRISE HIJACK! 🎁';
+    title.style.color = '#ffda79';
+
+    const sc = $('#surpriseChoices');
+    sc.innerHTML = '';
+    words.forEach(w => {
+      const b = document.createElement('button');
+      b.className = 'word-choice';
+      b.textContent = w;
+      b.onclick = () => {
+        selectSurpriseWord(w);
+      };
+      sc.appendChild(b);
+    });
+
+    $('#ovSurprise').classList.add('show');
+    AudioFX.turn();
+  } else if (state.drawerId === 'you') {
+    // Show a warning to the drawer on their choose screen
+    const chooseSub = $('#ovChoose .ov-sub');
+    if (chooseSub) {
+      chooseSub.innerHTML = `Pick a word — <b style="color:var(--sun)">⚠️ ${esc(surprisePlayerName)} has a Surprise Hijack opportunity!</b>`;
+    }
+  }
+
+  // Handle Bot Surprise Player
+  if (surprisePlayerId !== 'you' && surprisePlayerId !== state.you.id) {
+    const pObj = state.players.find(p => p.id === surprisePlayerId);
+    const isBotPlayer = pObj && !pObj.isYou && pObj.id !== 'you';
+    if (isBotPlayer) {
+      // It's a bot! Simulate choice or skip
+      const botDelay = rand(3000, 7000);
+      setTimeout(() => {
+        if (state.phase === 'choosing' && state.surpriseActive && state.surprisePlayerId === surprisePlayerId) {
+          const decideToHijack = Math.random() < 0.5; // 50% chance
+          if (decideToHijack) {
+            const chosen = pick(words);
+            selectSurpriseWord(chosen, surprisePlayerId);
+          } else {
+            skipSurprise(surprisePlayerId);
+          }
+        }
+      }, botDelay);
+    }
+  }
+}
+
+function selectSurpriseWord(word, playerId = 'you') {
+  if (!state.surpriseActive) return;
+  
+  if (playerId === 'you' && Net.ws && Net.ws.readyState === WebSocket.OPEN) {
+    Net.ws.send(JSON.stringify({
+      type: 'surpriseSelection',
+      roomCode: state.roomCode,
+      word: word,
+      surprisePlayerId: state.you.id
+    }));
+  } else {
+    applySurpriseWordSelection(word, playerId);
+  }
+}
+
+function applySurpriseWordSelection(word, surprisePlayerId) {
+  state.surpriseActive = false;
+  state.surpriseWordChoice = word;
+  
+  const name = nameOf(surprisePlayerId);
+  chatMsg(`🎁 <b>${esc(name)}</b> chose a surprise word!`, 'sys');
+  banner(`🎁 Hijacked! ${name.toUpperCase()} changed the word to: ${word.toUpperCase()}!`, 4000);
+
+  // Hide overlays
+  $('#ovSurprise').classList.remove('show');
+  $('#ovWaiting').classList.remove('show');
+  $('#ovChoose').classList.remove('show');
+
+  // Start turn
+  beginTurn(word);
+}
+
+function skipSurprise(playerId = 'you') {
+  if (!state.surpriseActive) return;
+
+  if (playerId === 'you' && Net.ws && Net.ws.readyState === WebSocket.OPEN) {
+    Net.ws.send(JSON.stringify({
+      type: 'surpriseSkip',
+      roomCode: state.roomCode,
+      surprisePlayerId: state.you.id
+    }));
+  } else {
+    applySurpriseSkip(playerId);
+  }
+}
+
+function applySurpriseSkip(surprisePlayerId) {
+  state.surpriseSkipped = true;
+  state.surpriseActive = false;
+
+  const name = nameOf(surprisePlayerId);
+  chatMsg(`🎁 <b>${esc(name)}</b> skipped the surprise word change.`, 'sys');
+
+  // Hide surprise overlays
+  $('#ovSurprise').classList.remove('show');
+  $('#ovWaiting').classList.remove('show');
+
+  // If the drawer had already chosen their word, start the turn with that word!
+  if (state.drawerWordChoice) {
+    const finalWord = state.drawerWordChoice;
+    state.drawerWordChoice = null;
+    beginTurn(finalWord);
+  } else {
+    if (state.drawerId === 'you') {
+      const chooseSub = $('#ovChoose .ov-sub');
+      if (chooseSub) {
+        chooseSub.innerHTML = `Pick a word — <b style="color:var(--ok)">Surprise skipped! Your choice is final.</b>`;
+      }
+    }
+  }
+}
+
+$('#btnSurpriseSkip').onclick = () => {
+  skipSurprise();
+};
+
+function beginTurn(word){
+  $('#ovChoose').classList.remove('show');
+  state.word=word.toLowerCase();
+  state.revealed=state.word.split('').map(()=>false);
+  const h=Math.min(state.settings.hints, Math.max(0,state.word.replace(/ /g,'').length-1));
+  state.hintTimes=Array.from({length:h},(_,i)=>Math.floor(state.drawTime*(1-(i+1)/(h+1))));
+  state.phase='draw';
+  renderHint(); renderPlayers(); startTimer();
+  if(state.drawerId==='you'){
+    banner(`You are drawing: ${word.toUpperCase()} — go!`,3000);
+    if (!state.isPrivate) {
+      scheduleBotGuessers();
+    }
+  } else {
+    banner(`${nameOf(state.drawerId)} is drawing — type your guess! ⌨️`,3000);
+    if (!state.isPrivate) {
+      botDraw(word);
+      scheduleBotCoGuessers();
+    }
+  }
+}
+
+function announce(txt){
+  const a=$('#announce'); a.textContent=txt;
+  a.classList.remove('show'); void a.offsetWidth; a.classList.add('show');
+}
+
+/* ---------- bot drawing animation ---------- */
+function botDraw(word){
+  let keys=[];
+  if(state._botParts){ keys=state._botParts.map(doodleKeyFor).filter(Boolean); state._botParts=null; }
+  else { const k=doodleKeyFor(word); if(k) keys=[k]; }
+  let raw=[];
+  if(keys.length){
+    const layouts = keys.length>=2 ? [{s:.55,ox:-.02,oy:.1},{s:.55,ox:.47,oy:.1}] : [{s:1,ox:0,oy:0}];
+    keys.slice(0,2).forEach((key,ki)=>{
+      const L=layouts[ki];
+      DOODLES[key].forEach(st=>{
+        if(st.circle){ const [cx,cy,r]=st.circle; raw.push({c:st.c,w:st.w,circle:[cx*L.s+L.ox, cy*L.s+L.oy, r*L.s]}); }
+        else raw.push({c:st.c,w:st.w,pts:st.pts.map(([x,y])=>[x*L.s+L.ox, y*L.s+L.oy])});
+      });
+    });
+  } else {
+    /* custom / unknown word: bot draws confident abstract art 🎨 */
+    const cols=['#e74c3c','#3498db','#2ecc71','#f8c51c','#9b59b6','#22254a'];
+    const n=irand(4,7);
+    for(let i=0;i<n;i++){
+      const pts=[]; let x=rand(.15,.85), y=rand(.2,.75);
+      let ang=rand(0,Math.PI*2);
+      const steps=irand(6,14);
+      for(let s=0;s<steps;s++){
+        pts.push([Math.min(.95,Math.max(.05,x)),Math.min(.9,Math.max(.08,y))]);
+        ang+=rand(-.9,.9); x+=Math.cos(ang)*rand(.03,.09); y+=Math.sin(ang)*rand(.03,.09);
+      }
+      raw.push({c:pick(cols),w:rand(.5,1),pts});
+    }
+  }
+  // expand circles into point paths, add human wobble
+  const strokes=raw.map(s=>{
+    let pts;
+    if(s.circle){ const [cx,cy,r]=s.circle; pts=[];
+      for(let a=0;a<=Math.PI*2+.1;a+=.22) pts.push([cx+Math.cos(a)*r, cy+Math.sin(a)*r*1.02]);
+    } else {
+      pts=[]; const P=s.pts;
+      for(let i=0;i<P.length-1;i++){
+        const [x1,y1]=P[i],[x2,y2]=P[i+1], seg=Math.max(2,Math.hypot(x2-x1,y2-y1)*24|0);
+        for(let k=0;k<seg;k++){ const t=k/seg;
+          pts.push([x1+(x2-x1)*t+rand(-.004,.004), y1+(y2-y1)*t+rand(-.004,.004)]);
+        }
+      }
+      pts.push(P[P.length-1]);
+    }
+    return {color:s.c, size:4+s.w*7, pts};
+  });
+  const totalPts=strokes.reduce((n,s)=>n+s.pts.length,0);
+  const drawSpan=state.drawTime*1000*.72;
+  let delay=600;
+  strokes.forEach(s=>{
+    const op={t:'s',color:s.color,size:s.size,pts:[]};
+    s.pts.forEach((pt,i)=>{
+      const t=setTimeout(()=>{
+        if(state.phase!=='draw') return;
+        if(i===0) ops.push(op);
+        op.pts.push(pt);
+        if(op.pts.length>1) drawPath(op.pts.slice(-2),op.color,op.size);
+        else drawPath(op.pts,op.color,op.size);
+      },delay);
+      state.botTimers.push(t);
+      delay+=drawSpan/totalPts;
+    });
+    delay+=rand(150,500); // thinking pause between strokes
+  });
+}
+function clearBotTimers(){ state.botTimers.forEach(clearTimeout); state.botTimers=[]; }
+
+/* ---------- guessing ---------- */
+function normalize(s){return s.toLowerCase().replace(/[^\p{L}\p{M} ]/gu,'').replace(/\s+/g,' ').trim();}
+function lev(a,b){
+  const m=a.length,n=b.length,d=Array.from({length:m+1},(_,i)=>[i,...Array(n).fill(0)]);
+  for(let j=1;j<=n;j++)d[0][j]=j;
+  for(let i=1;i<=m;i++)for(let j=1;j<=n;j++)
+    d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]!==b[j-1]?1:0));
+  return d[m][n];
+}
+function guessPoints(){ return Math.round(120 + (state.timeLeft/state.drawTime)*280); }
+
+function submitGuess(){
+  const inp=$('#chatInput'), raw=inp.value; inp.value='';
+  const txt=normalize(raw); if(!txt) return;
+  const me=state.players.find(p=>p.isYou);
+
+  // send to network if multiplayer
+  Net.sendChat(raw);
+
+  if(state.phase!=='draw'||state.drawerId==='you'||me.guessed){
+    chatMsg(`<b>${esc(me.name)}:</b> ${esc(raw)}`);
+    botMaybeReply(raw);
+    return;
+  }
+  if(txt===state.word){
+    playerGuessed(me);
+  } else if(lev(txt,state.word)<=2 && Math.abs(txt.length-state.word.length)<=2){
+    chatMsg(`🤏 "<b>${esc(raw)}</b>" is sooo close!`,'close');
+    emojiBurst(['🤏','😬','👀'],3,78); AudioFX.close();
+  } else {
+    chatMsg(`<b>${esc(me.name)}:</b> ${esc(raw)} ❌`,'wrong-me');
+    emojiBurst(['❌','😅','🙈'],3,78); AudioFX.wrong();
+  }
+}
+$('#sendBtn').onclick=submitGuess;
+$('#chatInput').addEventListener('keydown',e=>{ if(e.key==='Enter') submitGuess(); });
+
+function playerGuessed(p){
+  if(p.guessed||state.phase!=='draw') return;
+  p.guessed=true;
+  const pts=guessPoints();
+  p.score+=pts; p.roundGain+=pts;
+  const drawer=state.players.find(x=>x.id===state.drawerId);
+  drawer.score+=70; drawer.roundGain+=70;
+  chatMsg(`🎉 <b>${esc(p.name)}</b> guessed the word! (+${pts})`,'correct');
+  renderPlayers(); scorePop(p.id,pts); renderHint();
+  if(p.isYou){ emojiBurst(['🎉','✅','🥳','👏','✨'],10); AudioFX.correct(); banner(`Nailed it! +${pts} points 🎉`,2200); }
+  else { emojiBurst(['✅','⚡'],3,20); AudioFX.pop(); }
+  const guessers=state.players.filter(x=>x.id!==state.drawerId);
+  if(guessers.every(x=>x.guessed)) setTimeout(()=>endTurn('all'),700);
+}
+
+/* bots guessing while YOU draw */
+function scheduleBotGuessers(){
+  const wrongPool=langWordPool().filter(w=>w!==state.word);
+  state.players.filter(p=>!p.isYou).forEach(bot=>{
+    const willGuess=Math.random()<bot.persona.skill+.15;
+    const when=rand(.28,.92)*state.drawTime*1000*bot.persona.speed;
+    // wrong guesses & banter first
+    const nWrong=irand(1,3);
+    for(let i=0;i<nWrong;i++){
+      const t=setTimeout(()=>{
+        if(state.phase!=='draw'||bot.guessed) return;
+        const w=pick(wrongPool);
+        chatMsg(`<b>${esc(bot.name)}:</b> ${w} ${pick(['❌','🤔','😖','😵'])}`);
+        if(Math.random()<.3) AudioFX.wrong();
+      }, when*rand(.25,.85));
+      state.botTimers.push(t);
+    }
+    if(willGuess){
+      const t=setTimeout(()=>{ if(state.phase==='draw') playerGuessed(bot); }, Math.min(when,(state.drawTime-2)*1000));
+      state.botTimers.push(t);
+    } else if(Math.random()<.6){
+      const t=setTimeout(()=>{ if(state.phase==='draw'&&!bot.guessed) chatMsg(`<b>${esc(bot.name)}:</b> ${pick(['what IS that 😂','I give up 💀','is it abstract art?','my eyes 🙈'])}`); }, state.drawTime*1000*rand(.7,.95));
+      state.botTimers.push(t);
+    }
+  });
+}
+/* bots guessing alongside you when another bot draws */
+function scheduleBotCoGuessers(){
+  const wrongPool=langWordPool().filter(w=>w!==state.word);
+  state.players.filter(p=>!p.isYou&&p.id!==state.drawerId).forEach(bot=>{
+    if(Math.random()<.4+bot.persona.skill*.4){
+      const when=rand(.45,.95)*state.drawTime*1000;
+      const t=setTimeout(()=>{ if(state.phase==='draw') playerGuessed(bot); },when);
+      state.botTimers.push(t);
+    }
+    if(Math.random()<bot.persona.chatty){
+      const t=setTimeout(()=>{ if(state.phase==='draw'&&!bot.guessed) chatMsg(`<b>${esc(bot.name)}:</b> ${pick(wrongPool)} ${pick(['❓','🤨','😩'])}`); }, rand(.2,.5)*state.drawTime*1000);
+      state.botTimers.push(t);
+    }
+  });
+}
+function botMaybeReply(raw){
+  if(Math.random()<.35){
+    const bot=pick(state.players.filter(p=>!p.isYou));
+    setTimeout(()=>chatMsg(`<b>${esc(bot.name)}:</b> ${pick(['lol','😂😂','fr','no way','👀','same tbh'])}`),rand(600,1600));
+  }
+}
+
+/* ---------- end of turn / results ---------- */
+function endTurn(reason){
+  if(state.phase!=='draw') return;
+  state.phase='result';
+  stopTimer(); clearBotTimers();
+  const anyone=state.players.some(p=>p.guessed);
+  $('#resultTitle').textContent = reason==='all' ? 'Everyone got it! 🔥' : anyone ? "Time's up! ⏰" : 'Nobody got it 💀';
+  $('#revealWord').textContent = state.word.toUpperCase();
+  const rows=$('#scoreRows'); rows.innerHTML='';
+  [...state.players].sort((a,b)=>b.roundGain-a.roundGain).forEach(p=>{
+    rows.insertAdjacentHTML('beforeend',
+      `<div class="score-row"><div class="p-avatar" style="width:32px;height:32px;font-size:17px;background:${p.color}">${p.face}</div>
+       <span>${esc(p.name)}${p.isYou?' (you)':''}</span>
+       <span class="delta ${p.roundGain?'':'zero'}">+${p.roundGain}</span></div>`);
+  });
+  if(reason==='all'){ confetti(50); AudioFX.correct(); }
+  else if(!anyone){ emojiBurst(['💀','😭','🫠'],6); AudioFX.wrong(); }
+  $('#ovResult').classList.add('show');
+  renderHint();
+  setTimeout(()=>{ $('#ovResult').classList.remove('show'); state.turnIdx++; nextTurn(); },3200);
+}
+
+function endGame(){
+  state.phase='over';
+  const sorted=[...state.players].sort((a,b)=>b.score-a.score);
+  const pod=$('#podium'); pod.innerHTML='';
+  const heights=[110,80,60], medal=['🥇','🥈','🥉'], cols=['var(--sun)','#c8ccd8','#d9a066'];
+  [1,0,2].forEach(rank=>{
+    const p=sorted[rank]; if(!p) return;
+    pod.insertAdjacentHTML('beforeend',
+      `<div class="pod"><div class="p-avatar" style="background:${p.color}">${p.face}</div>
+       <div class="nm">${esc(p.name)}</div>
+       <div class="bar" style="height:${heights[rank]}px;background:${cols[rank]}">${medal[rank]}</div></div>`);
+  });
+  const rows=$('#finalRows'); rows.innerHTML='';
+  sorted.forEach((p,i)=>rows.insertAdjacentHTML('beforeend',
+    `<div class="score-row"><span style="width:22px">#${i+1}</span>
+     <div class="p-avatar" style="width:32px;height:32px;font-size:17px;background:${p.color}">${p.face}</div>
+     <span>${esc(p.name)}${p.isYou?' (you)':''}</span><span class="delta">${p.score}</span></div>`));
+  $('#ovFinal').classList.add('show');
+  confetti(160); AudioFX.win();
+  if(sorted[0].isYou) emojiBurst(['🏆','👑','🎉','🥇'],12);
+}
+$('#againBtn').onclick=()=>{
+  $('#ovFinal').classList.remove('show'); $('#game').classList.remove('active');
+  if(state.isPrivate){ $('#room').classList.add('active'); renderRoomPlayers(); simulateJoins(); }
+  else $('#lobby').classList.add('active');
+};
+
+/* ---------- reactions ---------- */
+$$('.reaction-bar button').forEach(b=>{
+  b.onclick=()=>{
+    const e=b.dataset.e;
+    emojiBurst([e],5,rand(35,65)); AudioFX.pop();
+    chatMsg(`<b>${esc(state.you.name)}</b> reacted ${e}`,'sys');
+    if(Math.random()<.5){ const bot=pick(state.players.filter(p=>!p.isYou));
+      setTimeout(()=>{ emojiBurst([pick(['😂','👍','🔥','😱','💀'])],3,rand(30,70));
+        chatMsg(`<b>${esc(bot.name)}</b> reacted back`,'sys'); },rand(700,1800)); }
+  };
+});
+
+/* ---------- sound toggle ---------- */
+$('#soundBtn').onclick=function(){ const on=AudioFX.toggle(); this.textContent=on?'🔊':'🔇'; toast(on?'Sound on':'Sound off'); };
+
+/* ================= VOICE CHAT (local mic + WebRTC) ================= */
+const vu=$('#vu'); for(let i=0;i<14;i++) vu.appendChild(document.createElement('i'));
+let micStream=null, analyser=null, vuRAF=null;
+$('#micBtn').onclick=async function(){
+  if(state.micOn){
+    micStream?.getTracks().forEach(t=>t.stop()); micStream=null;
+    cancelAnimationFrame(vuRAF); state.micOn=false;
+    this.classList.remove('mic-on','mic-live'); $('#voiceDot').classList.remove('live');
+    $('#voiceHint').textContent='Mic is off. Tap 🎙️ to talk — bars show your live voice.';
+    vu.querySelectorAll('i').forEach(b=>{b.style.height='20%';b.classList.remove('hot');});
+    document.querySelector('[data-av="you"]')?.classList.remove('speaking');
+    toast('🎙️ Mic off');
+    // close all peer connections
+    peerConnections.forEach(pc=>pc.close());
+    peerConnections.clear();
+    audioElements.forEach(audio=>{audio.pause();audio.remove();});
+    audioElements.clear();
+    return;
+  }
+  try{
+    micStream=await navigator.mediaDevices.getUserMedia({audio:true});
+    const ac=new (window.AudioContext||window.webkitAudioContext)();
+    const src=ac.createMediaStreamSource(micStream);
+    analyser=ac.createAnalyser(); analyser.fftSize=64; src.connect(analyser);
+    state.micOn=true; this.classList.add('mic-on','mic-live');
+    $('#voiceDot').classList.add('live');
+    const voiceMsg = Net.ws && Net.ws.readyState===WebSocket.OPEN
+      ? '🟢 Live — connecting to other players…'
+      : '🟢 Live — your voice level is shown below. Connect a server for friends to hear you!';
+    $('#voiceHint').textContent=voiceMsg;
+    toast('🎙️ Mic on — you are live!');
+    const data=new Uint8Array(analyser.frequencyBinCount);
+    const bars=[...vu.querySelectorAll('i')];
+    (function loop(){
+      analyser.getByteFrequencyData(data);
+      let sum=0; for(const v of data) sum+=v;
+      const lvl=sum/data.length/255;
+      bars.forEach((b,i)=>{ const h=Math.max(.14,Math.min(1,lvl*rand(1.6,3)+(i%3)*.04));
+        b.style.height=(h*100)+'%'; b.classList.toggle('hot',h>.3); });
+      const av=document.querySelector('[data-av="you"]');
+      if(av) av.classList.toggle('speaking',lvl>.06);
+      vuRAF=requestAnimationFrame(loop);
+    })();
+
+    // initiate voice calls with all other players if multiplayer
+    if(Net.ws && Net.ws.readyState===WebSocket.OPEN) {
+      state.players.filter(p=>!p.isYou).forEach(p=>{
+        setTimeout(()=>initiateVoiceCall(p.id),100);
+      });
+    }
+  }catch(err){
+    toast('🎙️ Mic blocked — allow microphone access in your browser');
+  }
+};
+/* bots occasionally "talk" so the voice panel feels alive */
+setInterval(()=>{
+  if(state.phase!=='draw'||Math.random()<.5) return;
+  const bot=pick(state.players.filter(p=>!p.isYou)); if(!bot) return;
+  const av=document.querySelector(`[data-av="${bot.id}"]`); if(!av) return;
+  av.classList.add('speaking'); setTimeout(()=>av.classList.remove('speaking'),rand(900,2200));
+},3500);
+
+/* ================= NET: WebSocket + WebRTC Multiplayer =================
+   Full integration: drawing ops, chat, voice, and real player management.
+====================================================================== */
+let defaultServerUrl = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host;
+let NET_URL = defaultServerUrl;
+const rtcConfig = { iceServers: [{urls: 'stun:stun.l.google.com:19302'}, {urls: 'stun:stun1.l.google.com:19302'}] };
+const peerConnections = new Map(); // playerId -> RTCPeerConnection
+const audioElements = new Map(); // playerId -> <audio>
+
+const Net = {
+  ws: null,
+  reconnectAttempts: 0,
+  maxReconnectAttempts: 5,
+  reconnectDelay: 2000,
+
+  connect(url) {
+    if(!url) return;
+    try {
+      this.ws = new WebSocket(url);
+      this.ws.onopen = () => {
+        console.log('🔗 connected to drawkaro server');
+        this.reconnectAttempts = 0;
+        if(state.isPrivate && state.roomCode) {
+          this.joinRoom(state.roomCode, state.you);
+        }
+      };
+      this.ws.onmessage = e => handleNetMessage(JSON.parse(e.data));
+      this.ws.onerror = (err) => {
+        console.warn('ws error:', err);
+        toast('⚠️ Connection error');
+      };
+      this.ws.onclose = () => {
+        console.warn('ws closed');
+        this.ws = null;
+        if(state.isPrivate && this.reconnectAttempts < this.maxReconnectAttempts) {
+          this.reconnectAttempts++;
+          setTimeout(() => this.connect(NET_URL), this.reconnectDelay);
+        }
+      };
+    } catch(err) {
+      console.warn('net disabled:', err);
+    }
+  },
+
+  joinRoom(roomCode, playerData) {
+    if(!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    this.ws.send(JSON.stringify({
+      type: 'joinRoom',
+      roomCode,
+      playerData
+    }));
+  },
+
+  sendOp(op) {
+    if(!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    const msg = { type: 'op', roomCode: state.roomCode, playerId: state.you.id, ...op };
+    this.ws.send(JSON.stringify(msg));
+  },
+
+  sendChat(msg) {
+    if(!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    this.ws.send(JSON.stringify({
+      type: 'chat',
+      roomCode: state.roomCode,
+      playerId: state.you.id,
+      playerName: state.you.name,
+      msg
+    }));
+  },
+
+  startGame(settings) {
+    if(!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    this.ws.send(JSON.stringify({
+      type: 'startGame',
+      roomCode: state.roomCode,
+      settings
+    }));
+  },
+
+  sendRtc(targetPlayerId, rtcType, extra) {
+    if(!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    this.ws.send(JSON.stringify({
+      type: 'rtc',
+      roomCode: state.roomCode,
+      targetPlayerId,
+      rtcType,
+      ...extra
+    }));
+  }
+};
+
+function handleNetMessage(msg) {
+  const t = msg.type;
+  if(t === 'roomState') {
+    // initial state from server on join
+    state.hostId = msg.host;
+    
+    // Synchronize local player name in case the server altered/deduplicated it
+    const meOnServer = msg.players.find(p => p.id === state.you.id);
+    if (meOnServer) {
+      state.you.name = meOnServer.name;
+    }
+
+    state.roomBots = msg.players.filter(p => p.id !== state.you.id);
+    state.players = cleanAndDeduplicate(msg.players.map(p => ({
+      id: p.id === state.you.id ? 'you' : p.id,
+      name: p.name,
+      face: p.face,
+      color: p.color,
+      score: p.score || 0,
+      isYou: p.id === state.you.id,
+      guessed: p.guessed || false,
+      roundGain: p.roundGain || 0,
+      persona: p.persona || null
+    })));
+    renderRoomPlayers();
+    if(msg.messages && msg.messages.length) {
+      const recent = msg.messages.slice(-10);
+      recent.forEach(m => {
+        if(m.type === 'chat') chatMsg(`<b>${esc(m.playerName || m.name)}:</b> ${esc(m.msg)}`);
+      });
+    }
+  }
+  else if(t === 'playerJoined') {
+    const p = msg.player;
+    if(p.id !== state.you.id && !state.roomBots.find(x => x.id === p.id)) {
+      state.roomBots.push(p);
+      renderRoomPlayers();
+      
+      // Keep state.players updated if a game is currently active
+      if (state.phase !== 'idle' && !state.players.find(x => x.id === p.id)) {
+        state.players.push({
+          id: p.id,
+          name: p.name,
+          face: p.face,
+          color: p.color,
+          score: p.score || 0,
+          isYou: false,
+          guessed: p.guessed || false,
+          roundGain: p.roundGain || 0,
+          persona: p.persona || null
+        });
+        state.players = cleanAndDeduplicate(state.players);
+        renderPlayers();
+      }
+
+      chatMsg(`✨ <b>${esc(p.name)}</b> joined the room`, 'sys');
+      AudioFX.pop();
+    }
+  }
+  else if(t === 'playerLeft') {
+    const leftPlayerName = nameOf(msg.playerId) || 'A player';
+    state.roomBots = state.roomBots.filter(p => p.id !== msg.playerId);
+    state.players = state.players.filter(p => p.id !== msg.playerId);
+    peerConnections.get(msg.playerId)?.close();
+    peerConnections.delete(msg.playerId);
+    const audio = audioElements.get(msg.playerId);
+    if(audio) { audio.pause(); audio.remove(); audioElements.delete(msg.playerId); }
+    
+    chatMsg(`👋 <b>${esc(leftPlayerName)}</b> left the room`, 'sys');
+
+    if (state.hostId === msg.playerId) {
+      // Host disconnected fallback: 2nd player becomes the host.
+      let newHostId = state.you.id || 'you';
+      if (state.roomBots.length > 0) {
+        newHostId = state.roomBots[0].id;
+      }
+      state.hostId = newHostId;
+      chatMsg(`👑 <b>${esc(nameOf(state.hostId))}</b> is now the host.`, 'sys');
+    }
+
+    renderRoomPlayers();
+    renderPlayers();
+  }
+  else if(t === 'hostChanged') {
+    state.hostId = msg.hostId;
+    renderRoomPlayers();
+    renderPlayers();
+    chatMsg(`👑 <b>${esc(nameOf(msg.hostId))}</b> is now the host.`, 'sys');
+    AudioFX.pop();
+  }
+  else if(t === 'gameStarted') {
+    if(msg.settings) {
+      state.settings = msg.settings;
+      state.surpriseTurns = msg.settings.surpriseTurns || [];
+    }
+    if(state.phase === 'idle') startGame(msg.order);
+  }
+  else if(t === 'startTurn') {
+    if (state.drawerId !== 'you') {
+      beginTurn(msg.word);
+    }
+  }
+  else if(t === 'surpriseTrigger') {
+    localSurpriseTrigger(msg.surprisePlayerId, msg.words);
+  }
+  else if(t === 'surpriseSelection') {
+    applySurpriseWordSelection(msg.word, msg.surprisePlayerId);
+  }
+  else if(t === 'surpriseSkip') {
+    applySurpriseSkip(msg.surprisePlayerId);
+  }
+  else if(t === 'drawerSelectedWord') {
+    state.drawerWordChoice = msg.word;
+  }
+  else if(t === 'op') { applyRemoteOp(msg); }
+  else if(t === 'chat') {
+    if (msg.playerId === state.you.id) return;
+    const senderId = msg.playerId;
+    const sender = state.players.find(p => p.id === senderId);
+    if (state.phase === 'draw' && sender && senderId !== state.drawerId && !sender.guessed) {
+      const txt = normalize(msg.msg);
+      if (txt === state.word) {
+        playerGuessed(sender);
+        return;
+      }
+    }
+    chatMsg(`<b>${esc(msg.playerName)}:</b> ${esc(msg.msg)}`);
+  }
+  else if(t === 'rtc') { handleRtcMessage(msg); }
+  else if(t === 'error') { toast('❌ Server: '+msg.msg); }
+}
+
+function applyRemoteOp(op) {
+  if(state.phase !== 'draw') return;
+  if(op.playerId === state.you.id || op.playerId === 'you') return;
+  ops.push({t:op.t, color:op.color, size:op.size, pts:op.pts, x:op.x, y:op.y});
+  applyOp(ops[ops.length-1]);
+}
+
+/* ================= WebRTC Voice Chat ================= */
+async function initiateVoiceCall(targetPlayerId) {
+  try {
+    if(!micStream) {
+      toast('🎙️ Enable mic first');
+      return;
+    }
+
+    if(peerConnections.has(targetPlayerId)) return; // already connected
+
+    const pc = new RTCPeerConnection(rtcConfig);
+    peerConnections.set(targetPlayerId, pc);
+
+    // add local audio track
+    micStream.getAudioTracks().forEach(track => {
+      pc.addTrack(track, micStream);
+    });
+
+    // receive remote audio
+    pc.ontrack = (event) => {
+      console.log('🎙️ got remote audio from', targetPlayerId);
+      let audio = audioElements.get(targetPlayerId);
+      if(!audio) {
+        audio = new Audio();
+        audio.autoplay = true;
+        document.body.appendChild(audio);
+        audioElements.set(targetPlayerId, audio);
+      }
+      audio.srcObject = event.streams[0];
+      audio.play().catch(e => console.warn('audio play failed:', e));
+    };
+
+    pc.onicecandidate = (event) => {
+      if(event.candidate) {
+        Net.sendRtc(targetPlayerId, 'ice-candidate', {
+          candidate: event.candidate
+        });
+      }
+    };
+
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    Net.sendRtc(targetPlayerId, 'offer', {
+      sdp: pc.localDescription
+    });
+  } catch(err) {
+    console.error('voice call failed:', err);
+    toast('❌ Voice connection failed');
+  }
+}
+
+async function handleRtcMessage(msg) {
+  const fromPlayerId = msg.fromPlayerId || msg.targetPlayerId;
+  try {
+    if(msg.rtcType === 'offer') {
+      let pc = peerConnections.get(fromPlayerId);
+      if(!pc) {
+        pc = new RTCPeerConnection(rtcConfig);
+        peerConnections.set(fromPlayerId, pc);
+
+        if(micStream) {
+          micStream.getAudioTracks().forEach(track => {
+            pc.addTrack(track, micStream);
+          });
+        }
+
+        pc.ontrack = (event) => {
+          console.log('🎙️ got remote audio from', fromPlayerId);
+          let audio = audioElements.get(fromPlayerId);
+          if(!audio) {
+            audio = new Audio();
+            audio.autoplay = true;
+            document.body.appendChild(audio);
+            audioElements.set(fromPlayerId, audio);
+          }
+          audio.srcObject = event.streams[0];
+          audio.play().catch(e => console.warn('audio play failed:', e));
+        };
+
+        pc.onicecandidate = (event) => {
+          if(event.candidate) {
+            Net.sendRtc(fromPlayerId, 'ice-candidate', {
+              candidate: event.candidate
+            });
+          }
+        };
+      }
+
+      await pc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      Net.sendRtc(fromPlayerId, 'answer', {
+        sdp: pc.localDescription
+      });
+    }
+    else if(msg.rtcType === 'answer') {
+      const pc = peerConnections.get(fromPlayerId);
+      if(pc) {
+        await pc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
+      }
+    }
+    else if(msg.rtcType === 'ice-candidate') {
+      const pc = peerConnections.get(fromPlayerId);
+      if(pc && msg.candidate) {
+        try {
+          await pc.addIceCandidate(new RTCIceCandidate(msg.candidate));
+        } catch(e) {
+          console.warn('ice candidate error:', e);
+        }
+      }
+    }
+  } catch(err) {
+    console.error('rtc message error:', err);
+  }
+}
+
+/* boot */
+window.addEventListener('load',fitCanvas);
+</script>
+</body>
+</html>
