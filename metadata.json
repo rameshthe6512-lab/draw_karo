@@ -1,0 +1,6 @@
+{
+  "name": "DrawKaro",
+  "description": "Multiplayer drawing game with voice chat - like Skribbl.io",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
